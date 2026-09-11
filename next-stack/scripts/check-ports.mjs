@@ -1,0 +1,31 @@
+import {chromium} from 'playwright';
+import {readFileSync,mkdirSync} from 'node:fs';
+import {parseEnv} from 'node:util';
+import assert from 'node:assert/strict';
+const env=parseEnv(readFileSync(new URL('../.env',import.meta.url),'utf8'));
+const base=process.env.TEST_URL||`http://127.0.0.1:${env.DASHBOARD_PORT||18780}`;
+const library=new URL(base);library.port=process.env.NAVIDROME_PORT||env.NAVIDROME_PORT||'4533';library.pathname='/';
+process.env.TMPDIR ||=new URL('../build/tmp/',import.meta.url).pathname;mkdirSync(process.env.TMPDIR,{recursive:true});
+mkdirSync(new URL('../build/screenshots/',import.meta.url),{recursive:true});
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox']});
+try{
+ const context=await browser.newContext({viewport:{width:1365,height:1000}});const p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+ assert.equal((await context.request.get(`${base}/api/state`)).status(),401);
+ assert.equal((await context.request.get(new URL('/api/song',library).href,{headers:{'X-Privamusic-User':env.DASHBOARD_USER}})).status(),401);
+ let firstState=true;await p.route(`${base}/api/state`,async route=>{if(!firstState)return route.continue();firstState=false;const response=await route.fetch();await new Promise(r=>setTimeout(r,1500));await route.fulfill({response});});
+ await p.goto(base);await p.getByLabel('Email',{exact:true}).fill(env.DASHBOARD_USER);await p.getByLabel('Password',{exact:true}).fill(env.DASHBOARD_PASSWORD);await p.getByRole('button',{name:'Sign in'}).click();await p.getByRole('heading',{name:'Bring it home.'}).waitFor();
+ const session=(await context.cookies()).find(c=>c.name==='pm_session');assert.ok(session.httpOnly);assert.equal(session.sameSite,'Strict');
+ assert.equal(await p.locator('#library-link').getAttribute('href'),library.href);
+ assert.equal((await context.request.get(`${base}/library/`)).status(),404);
+ assert.equal((await context.request.post(`${base}/api/jobs`,{headers:{Origin:'https://untrusted.example'},data:{url:'https://open.spotify.com/track/1uySv0BiiI8hqcAXCCacsd'}})).status(),403);
+ await p.screenshot({path:new URL('../build/screenshots/separate-dashboard.png',import.meta.url).pathname,fullPage:true});
+ await p.goto(library.href);
+ await p.locator('input[name="username"]').fill(env.DASHBOARD_USER);
+ await p.locator('input[name="password"]').fill(env.NAVIDROME_PASSWORD||env.DASHBOARD_PASSWORD);
+ await p.locator('button[type="submit"]').click();
+ await p.locator('input[name="password"]').waitFor({state:'detached'});
+ await p.getByText('Albums',{exact:true}).first().waitFor();
+ await p.screenshot({path:new URL('../build/screenshots/separate-navidrome.png',import.meta.url).pathname,fullPage:true});
+ assert.deepEqual(errors,[]);
+ console.log('Separate-port checks passed: dashboard login, slow-login regression, CSRF protection, library link, removed proxy, rejected trusted-header spoof, and independent Navidrome login.');
+}finally{await browser.close();}

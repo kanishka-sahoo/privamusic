@@ -1,0 +1,1 @@
+{"name":"privamusic-next","version":"1.0.0","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"test":"node --test test/*.test.mjs","start":"node src/server.mjs"},"dependencies":{"playwright":"1.58.2","ws":"8.21.3"}}

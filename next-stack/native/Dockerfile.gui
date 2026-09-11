@@ -1,0 +1,5 @@
+FROM ubuntu:24.04
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources && apt-get -o Acquire::ForceIPv4=true -o Acquire::https::Timeout=20 update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true -o Acquire::https::Timeout=20 install -y --no-install-recommends libwebkit2gtk-4.1-0 libgtk-3-0 xvfb xdotool imagemagick dbus-x11 ca-certificates fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
+ENV DISPLAY=:99 WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x900x24 & exec dbus-run-session /app/AppRun"]

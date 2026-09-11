@@ -105,3 +105,6 @@ coverage/
 # Build outputs
 dist/
 build/
+
+# User-supplied application archive (not source or redistributable build output)
+/spotiflac-next.zip

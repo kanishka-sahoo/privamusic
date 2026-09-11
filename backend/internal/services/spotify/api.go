@@ -208,7 +208,7 @@ type spotifyPlaylistResponse struct {
 		ID          string `json:"id"`
 		DisplayName string `json:"display_name"`
 	} `json:"owner"`
-	Tracks struct {
+	Tracks *struct {
 		Items []struct {
 			Track *spotifyTrackFull `json:"track"`
 		} `json:"items"`
@@ -358,6 +358,9 @@ func (c *APIClient) doRequest(ctx context.Context, method, endpoint string) ([]b
 
 		case http.StatusTooManyRequests:
 			retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
+			if retryAfter > defaultRetryAfter {
+				return nil, fmt.Errorf("%w: retry after %s", ErrRateLimited, retryAfter)
+			}
 			log.Printf("Rate limited by Spotify API, retrying after %v (attempt %d/%d)", retryAfter, attempt+1, maxRetries)
 			if err := sleepWithContext(ctx, retryAfter); err != nil {
 				return nil, err
@@ -542,7 +545,18 @@ func (c *APIClient) GetPlaylistTracks(ctx context.Context, playlistID string) (*
 
 	var playlistResp spotifyPlaylistResponse
 	if err := c.getJSON(ctx, playlistEndpoint, &playlistResp); err != nil {
-		return nil, fmt.Errorf("failed to get playlist %s: %w", playlistID, err)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		result, webErr := c.getWebPlaylist(ctx, playlistID)
+		if webErr != nil {
+			return nil, fmt.Errorf("playlist API failed (%v); public metadata fallback failed: %w", err, webErr)
+		}
+		return result, nil
+	}
+
+	if playlistResp.Tracks == nil {
+		return c.getWebPlaylist(ctx, playlistID)
 	}
 
 	// Collect tracks from initial response

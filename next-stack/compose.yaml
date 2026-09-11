@@ -1,0 +1,42 @@
+name: privamusic-next
+services:
+  dashboard:
+    build: .
+    image: privamusic-next:local
+    restart: unless-stopped
+    init: true
+    shm_size: 256m
+    env_file: .env
+    environment:
+      NAVIDROME_URL: http://navidrome:4533
+      NAVIDROME_PORT: ${NAVIDROME_PORT:-4533}
+    ports:
+      - '${BIND_ADDRESS:-127.0.0.1}:${DASHBOARD_PORT:-18780}:8080'
+    volumes:
+      - ./build/data:/data
+      - ./build/music:/music
+      - ${NEXT_SESSION_DIR:-./build/session}:/root/.local/share/spotiflac-next
+    depends_on:
+      - navidrome
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:8080/healthz").then(r=>r.json()).then(x=>process.exit(x.ready?0:1)).catch(()=>process.exit(1))']
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
+  navidrome:
+    image: deluan/navidrome@sha256:9012939114fbb1bb641b81cf96dec5ded15f0aafefe8d47a511d7cb919658e40
+    restart: unless-stopped
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_SCANNER_SCHEDULE: '0'
+      ND_SUBSONIC_DEFAULTREPORTREALPATH: 'true'
+      ND_LOGLEVEL: warn
+      ND_ENABLESHARING: 'false'
+      ND_ENABLEEXTERNALSERVICES: 'false'
+    ports:
+      - '${BIND_ADDRESS:-127.0.0.1}:${NAVIDROME_PORT:-4533}:4533'
+    volumes:
+      - ./build/music:/music:ro
+      - ./build/navidrome:/data

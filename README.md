@@ -2,6 +2,10 @@
 
 **Self-hosted FLAC music downloader that matches Spotify tracks to Tidal/Qobuz for high-quality downloads.**
 
+## SpotiFLAC Next + Navidrome dashboard
+
+The current authenticated Docker integration is in [`next-stack/`](next-stack/README.md). Run `./deploy.sh` to build and start its dashboard on port 18780 and Navidrome on port 4533. It includes persistent download progress, on-disk FLAC validation, and automatic Navidrome playlist synchronization, with separate logins and no Cloudflare tunnel. Use that stack for the supplied SpotiFLAC Next AppImage. The original Go/Next.js setup is documented below.
+
 ## Features
 
 - **No Credentials Needed** — Uses third-party APIs (8 for Tidal, 2 for Qobuz) by default
@@ -83,6 +87,19 @@ cp .env.example .env
 | `SPOTIFY_CLIENT_SECRET` | Built-in | Custom Spotify application Client Secret |
 
 > **Note:** Spotify credentials are optional. Spotisync includes built-in default credentials that work out of the box. Only set custom credentials if you want to use your own Spotify app.
+
+### Public Spotify playlists
+
+When the official Spotify API omits playlist tracks or fails, the backend falls
+back to SpotiFLAC's public web-player metadata flow. This supports public playlist
+preview and download-job creation without requiring Spotify user sign-in. Private
+playlists are not supported by this fallback. Spotify web-player changes or rate
+limits can still prevent metadata retrieval; long API retry delays fail promptly.
+
+The fallback supplies track title, artists, album, duration, and artwork, but may
+not include ISRC or full release metadata. Downloads then use the existing
+provider metadata matching. Audio availability depends on the configured providers.
+Upstream source and license attribution are recorded in `licenses/SpotiFLAC-SOURCE.md`.
 
 ### Navidrome Integration (Optional)
 

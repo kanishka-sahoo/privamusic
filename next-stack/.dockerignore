@@ -1,0 +1,17 @@
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!src/**
+!web/**
+!scripts/start.sh
+!node_modules/
+node_modules/*
+!node_modules/ws/
+!node_modules/ws/**
+!build/
+build/*
+!build/node
+!build/bridge-inject.so
+!build/app/
+!build/app/**

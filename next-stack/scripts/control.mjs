@@ -1,0 +1,15 @@
+import {readFileSync} from 'node:fs';
+const env=Object.fromEntries(readFileSync(new URL('../.env',import.meta.url),'utf8').trim().split('\n').map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)];}));
+const base=process.env.TEST_URL||`http://127.0.0.1:${env.DASHBOARD_PORT||18780}`;
+const response=await fetch(`${base}/api/login`,{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({username:env.DASHBOARD_USER,password:env.DASHBOARD_PASSWORD})});
+if(!response.ok)throw Error('Dashboard login failed: '+response.status);
+const headers={Cookie:response.headers.get('set-cookie').split(';')[0],Origin:base,'Content-Type':'application/json'};
+const action=process.argv[2]||'status';
+let result;
+if(action==='add')result=await fetch(`${base}/api/jobs`,{method:'POST',headers,body:JSON.stringify({url:process.argv[3]})});
+else if(['retry','cancel'].includes(action))result=await fetch(`${base}/api/jobs/${process.argv[3]}/${action}`,{method:'POST',headers,body:'{}'});
+else result=await fetch(`${base}/api/state`,{headers});
+const data=await result.json();
+if(!result.ok)throw Error(data.error);
+if(action==='status')console.log(JSON.stringify({connected:data.connected,navReady:data.navReady,halted:data.halted,jobs:data.jobs.map(j=>({id:j.id,name:j.name,kind:j.kind,status:j.status,done:j.done,failed:j.failed,total:j.tracks.length,playlistId:j.playlistId,error:j.error,trackErrors:j.tracks.filter(t=>t.error).map(t=>({name:t.name,error:t.error}))}))},null,2));
+else console.log(JSON.stringify({id:data.id,status:data.status}));
