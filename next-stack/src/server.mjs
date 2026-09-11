@@ -6,6 +6,7 @@ import {NativeBridge} from './bridge.mjs';
 import {Store,spotifyInput} from './model.mjs';
 import {Navidrome} from './navidrome.mjs';
 import {Worker} from './worker.mjs';
+import {proxyDesktop,attachDesktop} from './native-desktop.mjs';
 const user=process.env.DASHBOARD_USER||'social@ksahoo.com';
 const password=process.env.DASHBOARD_PASSWORD;
 const secret=process.env.SESSION_SECRET;
@@ -44,6 +45,7 @@ const server=http.createServer(async(req,res)=>{
       res.setHeader('Set-Cookie',`pm_session=${value}.${sign(value)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${secure?'; Secure':''}`);return send(res,200,{user});
     }
     if(!authenticated(req))return send(res,401,{error:'Sign in to continue'});
+    if(req.method==='GET'&&url.pathname.startsWith('/native/'))return proxyDesktop(req,res);
     if(req.method==='POST'&&url.pathname==='/api/logout'){res.setHeader('Set-Cookie','pm_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true});}
     if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,{user,connected:bridge.connected,navReady,navidromePort:Number(process.env.NAVIDROME_PORT||4533),halted:worker.halted,progress:worker.progress,jobs:store.list().map(publicJob)});
     if(req.method==='POST'&&url.pathname==='/api/jobs'){
@@ -67,5 +69,6 @@ const server=http.createServer(async(req,res)=>{
     send(res,404,{error:'Not found'});
   }catch(e){send(res,400,{error:e.message});}
 });
+attachDesktop(server,authenticated);
 server.requestTimeout=30000;server.headersTimeout=15000;
 server.listen(Number(process.env.PORT||8080),'0.0.0.0',()=>console.log('PrivaMusic dashboard listening on port '+(process.env.PORT||8080)));
