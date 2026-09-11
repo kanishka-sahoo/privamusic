@@ -10,7 +10,12 @@ export async function inspectAudio(file){
 export function ffmetadata(tags){return ';FFMETADATA1\n'+Object.entries(tags).map(([k,v])=>`${escape(k)}=${escape(v)}`).join('\n')+'\n';}
 function escape(value){return String(value).replace(/\\/g,'\\\\').replace(/[=;#\n]/g,c=>'\\'+c).replace(/\r/g,'');}
 async function download(url,maxBytes){
-  const r=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{'User-Agent':'PrivaMusic/1.0 (music library metadata sync)'}});
+  let r;
+  for(let attempt=0;attempt<3;attempt++){
+    r=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{'User-Agent':'PrivaMusic/1.0 (music library metadata sync)'}});
+    if(![429,502,503,504].includes(r.status)||attempt===2)break;
+    await r.body?.cancel();await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));
+  }
   if(r.status===404)return null;
   if(!r.ok)throw Error(`Metadata source returned ${r.status}`);
   let size=0;const chunks=[];
