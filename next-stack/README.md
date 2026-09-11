@@ -27,7 +27,7 @@ There is no tunnel, public URL, library reverse proxy, or trusted-header authent
 - The supplied `spotiflac-next.zip` in the repository root. This application archive is not committed; obtain it separately.
 - An authenticated SpotiFLAC Next application-data directory. On first deployment, the script detects `~/.local/share/spotiflac-next`. Alternatively, supply it with `NEXT_SESSION_DIR=/absolute/path ./deploy.sh`, or configure that setting in `next-stack/.env`. The default fallback is `next-stack/build/session`.
 
-Stop the original app before reusing its session. Only one native instance should run for the account. For a fresh installation or an expired session, sign in to the dashboard and choose **Sign in to downloader**. This opens the native app’s normal login screen in your browser. The desktop HTTP and WebSocket routes require the dashboard session; VNC and websockify listen only on container loopback and add no published ports. Deployment does not create a native account or bypass its login.
+Stop the original app before reusing its session. Only one native instance should run for the account. For a fresh installation or an expired session, sign in to the dashboard and choose **Sign in to downloader**. This opens the native app’s normal login screen in your browser. The desktop HTTP and WebSocket routes require the dashboard session; VNC listens only on container loopback and add no published ports. Deployment does not create a native account or bypass its login.
 
 Docker access is selected automatically: the scripts use Docker directly when available, otherwise `sudo docker`. This may prompt for the host password. The existing root Spotify `.env` is separate and is not changed.
 

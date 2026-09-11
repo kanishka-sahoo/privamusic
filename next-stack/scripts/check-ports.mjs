@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import {readFileSync,mkdirSync} from 'node:fs';
 import {parseEnv} from 'node:util';
 import assert from 'node:assert/strict';
-const env=parseEnv(readFileSync(new URL('../.env',import.meta.url),'utf8'));
+const env=process.env.TEST_CREDENTIALS_STDIN==='1'?JSON.parse(readFileSync(0,'utf8')):parseEnv(readFileSync(new URL('../.env',import.meta.url),'utf8'));
 const base=process.env.TEST_URL||`http://127.0.0.1:${env.DASHBOARD_PORT||18780}`;
 const library=new URL(base);library.port=process.env.NAVIDROME_PORT||env.NAVIDROME_PORT||'4533';library.pathname='/';
 process.env.TMPDIR ||=new URL('../build/tmp/',import.meta.url).pathname;mkdirSync(process.env.TMPDIR,{recursive:true});

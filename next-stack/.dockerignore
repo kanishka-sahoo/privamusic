@@ -15,3 +15,7 @@ build/*
 !build/bridge-inject.so
 !build/app/
 !build/app/**
+
+!node_modules/@novnc/
+!node_modules/@novnc/novnc/
+!node_modules/@novnc/novnc/**
