@@ -32,6 +32,9 @@ services:
       ND_DATAFOLDER: /data
       ND_SCANNER_SCHEDULE: '0'
       ND_SUBSONIC_DEFAULTREPORTREALPATH: 'true'
+      ND_COVERARTPRIORITY: embedded
+      ND_DISCARTPRIORITY: embedded
+      ND_LYRICSPRIORITY: '.lrc,embedded'
       ND_LOGLEVEL: warn
       ND_ENABLESHARING: 'false'
       ND_ENABLEEXTERNALSERVICES: 'false'

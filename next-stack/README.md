@@ -93,3 +93,23 @@ sudo docker compose down
 `node scripts/check-ports.mjs` tests the separate ports, access controls, dashboard login, and Navidrome login in a browser. Install Playwright's Chromium first, or supply `CHROMIUM_PATH`. `node scripts/smoke.mjs` additionally submits a real track and checks download completion. Screenshots are saved in ignored `build/screenshots/`.
 
 The preparation step requires its listed host tools and uses the host CA bundle when building the native runtime. The AppImage's service availability and authenticated session remain external dependencies; provider failures are not reported as successful downloads.
+
+## Artwork and lyrics
+
+Downloads request embedded covers and lyrics from the native app. Before Navidrome
+scans, the worker fills missing artwork from the track's Spotify image and missing
+lyrics from LRCLIB's exact metadata/duration lookup. Timed lyrics are preferred;
+plain lyrics are used when timing is unavailable. Lyrics are embedded and saved
+as matching `.lrc` sidecars. Existing artwork and lyrics are preserved. FLAC audio
+is copied without re-encoding. A missing match does not fail the music download.
+Navidrome prefers embedded artwork and sidecar lyrics.
+
+To backfill existing completed downloads while the download queue is idle:
+
+```sh
+docker compose exec -T dashboard node src/backfill.mjs
+```
+
+This is safe to rerun: existing metadata is retained. The command writes counts
+and per-track availability to `build/data/enrichment-report.json`, then requests
+a full Navidrome scan. Source outages appear in the report and can be retried.
