@@ -18,12 +18,20 @@ function render(data){
   $('#count-playlists').textContent=data.jobs.filter(j=>j.playlistId).length;
   $('#empty').hidden=!!data.jobs.length;$('#queue-label').textContent=data.jobs.length?`${data.jobs.length} additions`:'Your collection starts here';
   const open=new Set([...document.querySelectorAll('details[open]')].map(el=>el.dataset.id));
+  const scrollPositions=new Map([...document.querySelectorAll('details[data-id]')].map(el=>{
+    const list=el.querySelector('.track-list');return [el.dataset.id,{top:list.scrollTop,left:list.scrollLeft}];
+  }));
   $('#jobs').innerHTML=data.jobs.map(j=>{
     const current=j.tracks.find(t=>t.status==='downloading');
     const cover=typeof j.cover==='string'&&/^https:\/\/i\.scdn\.co\//.test(j.cover)?`<img class="cover" src="${esc(j.cover)}" alt="" loading="lazy">`:'<div class="cover">♫</div>';
     const pct=j.tracks.length?Math.round((j.done+j.failed)/j.tracks.length*100):0;
     return `<article class="job"><div class="job-top">${cover}<div class="job-info"><h3>${esc(j.name)}</h3><p class="meta">${esc(j.kind)} · ${j.tracks.length||'…'} tracks${j.playlistId?' · Playlist in Navidrome':''}</p></div><span class="badge ${esc(j.status)}">${esc(j.status)}</span></div><div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Download progress"><div></div></div><div class="job-footer"><span>${j.done} collected${j.failed?` · ${j.failed} failed`:''}${current?` · ${esc(current.name)}`:''}${current&&data.progress?.mb_downloaded?` · ${Number(data.progress.mb_downloaded).toFixed(1)} MB`:''}${j.retryAt>Date.now()?` · Cooling down · resumes ${esc(new Date(j.retryAt).toLocaleTimeString())}`:''}${j.status==='syncing'?' · Updating Navidrome…':''}${j.cancelRequested&&active.includes(j.status)?' · Stopping after current track':''}</span>${['partial','failed','cancelled'].includes(j.status)?`<button data-action="retry" data-id="${j.id}">Retry</button>`:['queued','resolving','downloading'].includes(j.status)?`<button data-action="cancel" data-id="${j.id}">Cancel</button>`:''}</div>${j.error?`<p class="error">${esc(j.error)}</p>`:''}${j.tracks.length?`<details data-id="${j.id}" ${open.has(j.id)?'open':''}><summary>Track details</summary><div class="track-list">${j.tracks.map(t=>`<div class="track"><span>${esc(t.name)} <small>— ${esc(t.artists)}</small>${t.error?`<p class="error">${esc(t.error)}</p>`:''}</span><small>${esc(t.status)}</small></div>`).join('')}</div></details>`:''}</article>`;
   }).join('');
+  // Polling replaces the lists; restore each playlist's reading position before paint.
+  document.querySelectorAll('details[data-id]').forEach(el=>{
+    const position=scrollPositions.get(el.dataset.id);if(!position)return;
+    const list=el.querySelector('.track-list');list.scrollTop=position.top;list.scrollLeft=position.left;
+  });
   // CSP disallows inline styles; set progress through the DOM API.
   document.querySelectorAll('[role="progressbar"]').forEach(el=>el.firstElementChild.style.width=`${el.getAttribute('aria-valuenow')}%`);
 }
