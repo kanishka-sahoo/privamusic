@@ -113,3 +113,9 @@ docker compose exec -T dashboard node src/backfill.mjs
 This is safe to rerun: existing metadata is retained. The command writes counts
 and per-track availability to `build/data/enrichment-report.json`, then requests
 a full Navidrome scan. Source outages appear in the report and can be retried.
+
+Native download requests are spaced at least ten seconds apart. A provider HTTP
+429 pauses the whole queue with a persisted cooldown (one minute, then doubling
+up to fifteen minutes). The same track is retried up to five times before the
+job stops for manual retry. The dashboard displays the resume time; restarting
+the container or submitting another job does not bypass the cooldown.

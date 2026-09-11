@@ -63,6 +63,7 @@ const server=http.createServer(async(req,res)=>{
         if(worker.halted)return send(res,503,{error:'Restart the service before retrying'});
         if(!['failed','partial','cancelled'].includes(job.status))return send(res,409,{error:'This job cannot be retried now'});
         job.status='queued';job.cancelRequested=false;job.error=null;
+        for(const t of job.tracks)t.rateLimitAttempts=0;
       }else{if(!['queued','resolving','downloading'].includes(job.status))return send(res,409,{error:'This job cannot be cancelled now'});job.cancelRequested=true;if(job.status==='queued')job.status='cancelled';}
       return send(res,200,publicJob(store.save(job)));
     }

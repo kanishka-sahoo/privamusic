@@ -14,7 +14,7 @@ export async function verifyAudio(path,expectedMs=0){
   return {bytes:(await stat(path)).size,duration};
 }
 export class Worker {
-  progress=null; halted=false;
+  progress=null; halted=false; lastDownloadAt=0;
   constructor(store,bridge,nav,music){Object.assign(this,{store,bridge,nav,music});store.recover();}
   save(job){if(this.store.get(job.id)?.cancelRequested)job.cancelRequested=true;return this.store.save(job);}
   async enrich(file,track){
@@ -23,14 +23,16 @@ export class Worker {
   async start(){
     await mkdir(this.music,{recursive:true});
     for(;;){
-      const job=this.store.list().reverse().find(j=>j.status==='queued');
+      const jobs=this.store.list();
+      const coolingDown=jobs.some(j=>Number(j.retryAt)>Date.now());
+      const job=!coolingDown&&jobs.reverse().find(j=>j.status==='queued');
       if(job&&this.bridge.connected&&!this.halted)await this.run(job);
       await sleep(1000);
     }
   }
   async run(job){
     try{
-      job.error=null;job.cancelRequested=false;
+      job.error=null;job.retryAt=null;job.cancelRequested=false;
       if(!job.tracks.length){job.status='resolving';this.save(job);Object.assign(job,metadata(await this.bridge.call('GetSpotifyMetadata',[{url:job.url}]),job.kind));}
       job.status='downloading';this.save(job);
       for(const t of job.tracks){
@@ -43,6 +45,9 @@ export class Worker {
           try{Object.assign(t,await verifyAudio(target,t.duration_ms),{status:'completed',error:null});await this.enrich(target,t);this.save(job);continue;}catch{}
           t.status='downloading';t.error=null;this.save(job);
           const stage=resolve(process.env.DATA_DIR||'/data','staging',job.id,t.spotify_id);await mkdir(stage,{recursive:true});
+          // Space native lookups across tracks and jobs, including fast provider failures.
+          await sleep(Math.max(0,this.lastDownloadAt+10000-Date.now()));
+          this.lastDownloadAt=Date.now();
           let polling=false;
           const timer=setInterval(async()=>{if(polling)return;polling=true;try{this.progress=await this.bridge.call('GetDownloadProgress',[],5000);}catch{}finally{polling=false;}},1000);
           let result;
@@ -58,8 +63,18 @@ export class Worker {
           if(!file.startsWith(root+sep))throw Error('Native app returned a file outside the staging directory');
           Object.assign(t,await verifyAudio(file,t.duration_ms));
           const temporary=target+'.part';await copyFile(file,temporary);await chmod(temporary,0o644);await rename(temporary,target);await rm(stage,{recursive:true,force:true});
-          await this.enrich(target,t);t.status='completed';
-        }catch(e){t.status='failed';t.error=e.message;if(/timed out|disconnected/.test(e.message)){this.halted=true;throw e;}}
+          await this.enrich(target,t);t.rateLimitAttempts=0;t.status='completed';
+        }catch(e){
+          if(/\b429\b|TOO_MANY_REQUESTS|rate.limit/i.test(e.message)){
+            t.rateLimitAttempts=(t.rateLimitAttempts||0)+1;
+            job.retryAt=Date.now()+Math.min(900000,60000*2**(t.rateLimitAttempts-1));
+            t.status=t.rateLimitAttempts<=5?'queued':'failed';t.error=e.message;
+            job.status=t.rateLimitAttempts<=5?'queued':job.tracks.some(t=>t.status==='completed')?'partial':'failed';
+            job.error=t.rateLimitAttempts<=5?'Provider rate limit reached. Downloads will resume after the cooldown.':'Provider is still rate-limiting after five retries. Retry this job later.';
+            if(t.rateLimitAttempts>5&&job.tracks.some(t=>t.status==='completed'))await this.nav.sync(job,()=>this.save(job));
+            return;
+          }
+          t.status='failed';t.error=e.message;if(/timed out|disconnected/.test(e.message)){this.halted=true;throw e;}}
         this.save(job);
       }
       const done=job.tracks.filter(t=>t.status==='completed').length;
