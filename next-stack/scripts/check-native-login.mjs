@@ -13,7 +13,7 @@ try{
  assert.equal((await context.request.get(`${base}/native/vnc.html`)).status(),401);
  async function deniedSocket(headers){
   const url=new URL('/native/websockify',base);url.protocol=url.protocol==='https:'?'wss:':'ws:';
-  await new Promise((resolve,reject)=>{const ws=new WebSocket(url,{headers,handshakeTimeout:10000});ws.on('unexpected-response',(_,res)=>{try{assert.equal(res.statusCode,403);res.resume();resolve();}catch(e){reject(e);}});ws.on('open',()=>{ws.close();reject(Error('Unexpected desktop access'));});ws.on('error',reject);});
+  await new Promise((resolve,reject)=>{const ws=new WebSocket(url,{headers,handshakeTimeout:10000});ws.on('unexpected-response',(_,res)=>{try{assert.equal(res.statusCode,403);res.resume();resolve();ws.terminate();}catch(e){reject(e);}});ws.on('open',()=>{ws.close();reject(Error('Unexpected desktop access'));});ws.on('error',reject);});
  }
  await deniedSocket({Origin:base});
  const p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
@@ -22,6 +22,7 @@ try{
  await deniedSocket({Origin:'https://untrusted.example',Cookie:`pm_session=${cookie.value}`});
  await p.goto(`${base}/native/vnc.html?autoconnect=1&resize=scale&path=native/websockify`);
  await p.waitForFunction(()=>document.documentElement.classList.contains('noVNC_connected'),null,{timeout:30000});
+ await p.waitForFunction(()=>{const c=document.querySelector('#native-screen canvas');if(!c?.width)return false;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const colors=new Set();for(let i=0;i<d.length;i+=4096)colors.add(`${d[i]},${d[i+1]},${d[i+2]}`);return colors.size>10;},null,{timeout:30000});
  await p.screenshot({path:new URL('../build/screenshots/netcup-native-login.png',import.meta.url).pathname,fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('Native login screen connected over Tailscale HTTPS. Anonymous and cross-origin WebSocket access were rejected.');
