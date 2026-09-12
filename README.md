@@ -23,7 +23,7 @@ There is no tunnel, public URL, library reverse proxy, or trusted-header authent
 
 ### Prerequisites
 
-- Linux x86_64, Docker Compose, Node 24+, npm, GCC, and Python 3.
+- Linux x86_64, Docker Compose, Node 24+, npm, GCC, and Python 3. The dashboard frontend is built with Vite during `./deploy.sh`; the output in `dist/` is what the image ships.
 - The supplied `spotiflac-next.zip` in the repository root. This application archive is not committed; obtain it separately.
 - An authenticated SpotiFLAC Next application-data directory. On first deployment, the script detects `~/.local/share/spotiflac-next`. Alternatively, supply it with `NEXT_SESSION_DIR=/absolute/path ./deploy.sh`, or configure that setting in `.env`. The default fallback is `build/session`.
 
@@ -68,6 +68,17 @@ The bridge is authenticated with a per-start token and listens only on container
 The application and Compose file now live at the repository root. When upgrading an existing checkout, move the ignored `next-stack/.env`, `next-stack/build/`, and any local session data to their corresponding root locations before running `./deploy.sh`. Replace an old root Spotify `.env` with the dashboard `.env`; keep a private backup if needed. Update `NEXT_SESSION_DIR` if it points inside the former directory.
 
 The Compose project name remains `privamusic-next` to preserve the service identity. Redeploy from the root to recreate containers with the new bind-mount paths. Do not use `docker compose down -v` or delete persistent data during migration.
+
+## Frontend development
+
+The dashboard is a React 19 app built with Vite under `web/`. Pages live in `web/src/pages`, reusable pieces in `web/src/components`, state in `web/src/hooks` (session polling, toasts, async actions), and API and presentation helpers in `web/src/lib`. The downloader login page is a second entry that bundles the noVNC client. The app uses only system fonts and hashed assets so the server's strict Content Security Policy stays intact; all frontend packages are dev dependencies and nothing from `node_modules` ships in the image except `ws`.
+
+```sh
+npm run dev     # Vite dev server on http://localhost:5173, proxying /api and /native to a running dashboard on :18780
+npm run build   # writes dist/, which src/server.mjs serves and the Dockerfile copies
+```
+
+Browser checks (`scripts/check-scroll.mjs`, `scripts/smoke.mjs`) run against the built output, so run `npm run build` first.
 
 ## Persistent data
 

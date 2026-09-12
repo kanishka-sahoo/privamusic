@@ -7,9 +7,8 @@ COPY build/app /app
 WORKDIR /opt/privamusic
 COPY package.json package-lock.json ./
 COPY node_modules/ws ./node_modules/ws
-COPY node_modules/@novnc/novnc ./node_modules/@novnc/novnc
 COPY src ./src
-COPY web ./web
+COPY dist ./dist
 COPY scripts/start.sh /usr/local/bin/privamusic-start
 ENV PORT=8080 NEXT_BRIDGE_SCRIPT=/run/next-bridge.js
 EXPOSE 8080

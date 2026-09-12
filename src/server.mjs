@@ -1,7 +1,8 @@
 import http from 'node:http';
-import {readFileSync,mkdirSync} from 'node:fs';
+import {readFileSync,readdirSync,mkdirSync} from 'node:fs';
 import {randomBytes,scryptSync,timingSafeEqual,createHmac} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {join,relative,extname} from 'node:path';
 import {NativeBridge} from './bridge.mjs';
 import {Store,spotifyInput} from './model.mjs';
 import {Navidrome} from './navidrome.mjs';
@@ -19,7 +20,18 @@ const nav=new Navidrome(process.env.NAVIDROME_URL||'http://navidrome:4533',user,
 const worker=new Worker(store,bridge,nav,process.env.MUSIC_DIR||'/music');
 let navReady=false;
 nav.initialize().then(()=>{navReady=true;return worker.start();}).catch(e=>{console.error(e.message);process.exit(1);});
-const assets=new Map(['/','/app.js','/style.css'].map(p=>[p,readFileSync(fileURLToPath(new URL(`../web/${p==='/'?'index.html':p.slice(1)}`,import.meta.url)))]));
+// The Vite build in dist/ is read once at startup. Hashed assets are public; the native page requires a session.
+const dist=fileURLToPath(new URL('../dist/',import.meta.url));
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png'};
+const assets=new Map();
+for(const entry of readdirSync(dist,{recursive:true,withFileTypes:true})){
+  if(!entry.isFile())continue;
+  const file=join(entry.parentPath,entry.name);
+  const route=relative(dist,file).split('\\').join('/');
+  const type=types[extname(file)];
+  if(!type||route==='native.html')continue;
+  assets.set(route==='index.html'?'/':`/${route}`,{body:readFileSync(file),type});
+}
 const sign=value=>createHmac('sha256',secret).update(value).digest('hex');
 function authenticated(req){const value=(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('pm_session='))?.slice(11);if(!value)return false;const [expires,nonce,signature]=value.split('.');const expected=sign(`${expires}.${nonce}`);return Number(expires)>Date.now()&&signature?.length===expected.length&&timingSafeEqual(Buffer.from(signature),Buffer.from(expected));}
 function send(res,status,data){res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(data));}
@@ -33,7 +45,7 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   try{
     if(req.method==='GET'&&url.pathname==='/healthz')return send(res,200,{ready:bridge.connected&&navReady});
-    if(req.method==='GET'&&assets.has(url.pathname)){res.setHeader('Content-Type',url.pathname.endsWith('.js')?'text/javascript':url.pathname.endsWith('.css')?'text/css':'text/html');return res.end(assets.get(url.pathname));}
+    if(req.method==='GET'&&assets.has(url.pathname)){const asset=assets.get(url.pathname);res.setHeader('Content-Type',asset.type);if(url.pathname.startsWith('/assets/'))res.setHeader('Cache-Control','public, max-age=31536000, immutable');return res.end(asset.body);}
     if(['POST','PUT','DELETE','PATCH'].includes(req.method)&&!sameOrigin(req))return send(res,403,{error:'Origin check failed'});
     if(req.method==='POST'&&url.pathname==='/api/login'){
       const key=req.socket.remoteAddress;const entry=failures.get(key)||{count:0,until:0};
