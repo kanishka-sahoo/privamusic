@@ -1,45 +1,21 @@
-# Git
-.git
-.gitignore
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!src/**
+!web/**
+!scripts/start.sh
+!node_modules/
+node_modules/*
+!node_modules/ws/
+!node_modules/ws/**
+!build/
+build/*
+!build/node
+!build/bridge-inject.so
+!build/app/
+!build/app/**
 
-# Dependencies
-**/node_modules
-**/__pycache__
-
-# Build outputs
-**/.next
-**/dist
-**/build
-
-# Environment files (should be set via docker-compose)
-.env
-.env.*
-!.env.example
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Test files
-**/*_test.go
-**/test
-**/tests
-**/__tests__
-
-# Documentation
-*.md
-LICENSE
-
-# SpotiFLAC reference (don't include in Docker)
-SpotiFLAC/
-
-# Temporary files
-*.tmp
-*.temp
-*.log
+!node_modules/@novnc/
+!node_modules/@novnc/novnc/
+!node_modules/@novnc/novnc/**

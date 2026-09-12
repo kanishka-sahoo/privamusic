@@ -1,110 +1,31 @@
-# ===========================
-# Spotisync .gitignore
-# ===========================
-
-# --------------------------
-# Environment & Secrets
-# --------------------------
-
-# Root environment file (contains secrets)
+# Credentials and local settings
 .env
+.env.*
 !.env.example
 
-# --------------------------
-# Backend (Go)
-# --------------------------
-
-# Configuration with secrets (example is tracked for local dev)
-backend/config.yaml
-
-# Database files
+# Dependencies, build artifacts, library data and native sessions
+node_modules/
+build/
+dist/
+.download-test/
+/spotiflac-next.zip
 *.db
 *.db-wal
 *.db-shm
-
-# Data directory (contains DB and temp files)
-backend/data/
-
-# Compiled binary
-backend/spotisync
-spotisync
-
-# Go build artifacts
-*.exe
-*.exe~
-*.dll
 *.so
-*.dylib
-*.test
-*.out
 
-# Go workspace
-go.work
-go.work.sum
+# Logs, temporary files and coverage
+*.log
+logs/
+tmp/
+temp/
+coverage/
 
-# --------------------------
-# Frontend (Next.js)
-# --------------------------
-
-# Dependencies
-frontend/node_modules/
-node_modules/
-
-# Next.js build output
-frontend/.next/
-frontend/out/
-
-# Environment files with secrets
-frontend/.env.local
-frontend/.env*.local
-.env.local
-.env*.local
-
-# --------------------------
-# IDE / Editor
-# --------------------------
-
+# Editors and operating systems
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-*.sublime-project
-*.sublime-workspace
-
-# --------------------------
-# Operating System
-# --------------------------
-
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
 Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# --------------------------
-# Miscellaneous
-# --------------------------
-
-# Log files
-*.log
-logs/
-
-# Temporary directories
-tmp/
-temp/
-
-# Coverage reports
-coverage/
-*.cover
-*.coverage
-
-# Build outputs
-dist/
-build/
-
-# User-supplied application archive (not source or redistributable build output)
-/spotiflac-next.zip

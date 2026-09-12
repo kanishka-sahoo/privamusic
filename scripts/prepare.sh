@@ -10,7 +10,7 @@ if [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]; then echo 'Nod
 if [ ! -x build/app/AppRun ]; then
   python3 - <<'PY'
 import zipfile, pathlib
-with zipfile.ZipFile('../spotiflac-next.zip') as z:
+with zipfile.ZipFile('spotiflac-next.zip') as z:
     entries=[n for n in z.namelist() if n.endswith('.AppImage')]
     if len(entries)!=1: raise SystemExit('Expected one AppImage in spotiflac-next.zip')
     pathlib.Path('build/SpotiFLAC-Next.AppImage').write_bytes(z.read(entries[0]))

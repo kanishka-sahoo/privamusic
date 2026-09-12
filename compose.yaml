@@ -1,3 +1,4 @@
+# Keep the existing project identity when upgrading from the nested layout.
 name: privamusic-next
 services:
   dashboard:

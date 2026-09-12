@@ -1,5 +1,7 @@
 # Live verification — 2026-09-11
 
+Historical results from before the application was moved to the repository root.
+
 ## Separate-port deployment
 
 - `./deploy.sh` completed twice, including build, startup, readiness checks, and preservation of existing data.
@@ -7,7 +9,6 @@
 - The former tunnel container was removed. The dashboard no longer proxies `/library/`, and Navidrome no longer trusts external identity headers.
 - Browser checks passed for both independent logins, the dashboard's separate-port library link, rejected identity-header spoofing, CSRF protection, and the delayed-initial-response login regression.
 - Five Node unit tests passed for URL validation, native metadata mapping, SQLite recovery, playlist ordering/idempotency, and playlist verification failures.
-- The Go Spotify service regression tests passed in the Docker builder.
 - The WebSocket dependency was updated to 8.21.3; npm audit reported zero vulnerabilities.
 
 ## Download and playlist verification
@@ -31,3 +32,12 @@ The full playlist was resumed after that checkpoint. These results do not claim 
 - `build/ACCESS.md`: private credentials and current service addresses
 
 Build artifacts, media, native sessions, credentials and the supplied application archive are excluded from Git.
+
+## Repository-root migration — 2026-09-12
+
+- All application files were moved from the nested layout to the repository root; the retired Go/Next.js application and its deployment configuration were removed.
+- `npm test` passed all five test files. Compose configuration, shell syntax, and Git whitespace checks passed.
+- `./deploy.sh` built both local images and recreated the existing services successfully. Dashboard readiness passed.
+- Container mounts were verified against root `build/data`, `build/music`, and `build/navidrome`; the existing external native-session path was retained.
+- Browser checks passed for both logins, the library link, delayed login, CSRF protection, and rejected trusted-header spoofing. The checks used the host's installed Chromium via `CHROMIUM_PATH`.
+- Existing dashboard credentials and persistent data were retained. No new download was submitted as part of this migration.

@@ -1,285 +1,125 @@
-# 🎵 Spotisync
+# PrivaMusic + SpotiFLAC Next + Navidrome
 
-**Self-hosted FLAC music downloader that matches Spotify tracks to Tidal/Qobuz for high-quality downloads.**
+A Docker dashboard for Spotify tracks, albums and playlists, with a durable download queue, FLAC validation, and automatic Navidrome playlist synchronization.
 
-## SpotiFLAC Next + Navidrome dashboard
+## One-command deployment
 
-The current authenticated Docker integration is in [`next-stack/`](next-stack/README.md). Run `./deploy.sh` to build and start its dashboard on port 18780 and Navidrome on port 4533. It includes persistent download progress, on-disk FLAC validation, and automatic Navidrome playlist synchronization, with separate logins and no Cloudflare tunnel. Use that stack for the supplied SpotiFLAC Next AppImage. The original Go/Next.js setup is documented below.
+From the repository root:
 
-## Features
-
-- **No Credentials Needed** — Uses third-party APIs (8 for Tidal, 2 for Qobuz) by default
-- **Hi-Res FLAC Downloads** — Lossless audio from Tidal and Qobuz
-- **Full Spotify Support** — Tracks, albums, playlists
-- **Complete Metadata** — Title, Artist, Album, AlbumArtist, Date, TrackNumber, TotalTracks, DiscNumber, TotalDiscs, ISRC, Genre, Copyright, Label, Explicit, Composer, Conductor, and more
-- **Synced Lyrics** — Fetched from LRCLIB, embedded in FLAC and saved as `.lrc` files
-- **Cover Art** — High-quality artwork from MusicBrainz, embedded and saved as `cover.jpg`
-- **Docker Ready** — Full docker-compose setup for easy deployment
-- **Modern Web UI** — Next.js frontend for managing downloads
-- **Real-time Updates** — WebSocket support for live job progress
-- **Multi-user Support** — JWT authentication for multiple users
-
-## Quick Start (Docker)
-
-### 1. Clone and Configure
-
-```bash
-git clone https://github.com/yourusername/spotisync.git
-cd spotisync
-
-# Copy the example config
-cp .env.example .env
+```sh
+./deploy.sh
 ```
 
-### 2. Edit Configuration
+The command prepares the native app, generates credentials on first use, builds the images, starts both services, waits for health, and removes the old Cloudflare container when upgrading. Existing credentials, downloads, playlists, queue state, and native sessions are retained.
 
-Open `.env` and set the required values:
+| Service | Default address |
+| --- | --- |
+| Dashboard | http://localhost:18780 |
+| Navidrome | http://localhost:4533 |
 
-```bash
-# Generate a secret key
-openssl rand -hex 32
+Both ports bind to localhost by default. Each service has its own login. The same generated email/password works for both unless a separate Navidrome password was configured. Login details are written to `build/ACCESS.md` with private permissions. The dashboard's **Open library** link uses the current hostname and Navidrome's configured port.
 
-# Edit .env with your values
-nano .env
+There is no tunnel, public URL, library reverse proxy, or trusted-header authentication. Navidrome requires its own credentials on its dedicated port. `DASHBOARD_PORT`, `NAVIDROME_PORT`, and `BIND_ADDRESS` can be configured in `.env`.
+
+### Prerequisites
+
+- Linux x86_64, Docker Compose, Node 24+, npm, GCC, and Python 3.
+- The supplied `spotiflac-next.zip` in the repository root. This application archive is not committed; obtain it separately.
+- An authenticated SpotiFLAC Next application-data directory. On first deployment, the script detects `~/.local/share/spotiflac-next`. Alternatively, supply it with `NEXT_SESSION_DIR=/absolute/path ./deploy.sh`, or configure that setting in `.env`. The default fallback is `build/session`.
+
+Stop the original app before reusing its session. Only one native instance should run for the account. For a fresh installation or an expired session, sign in to the dashboard and choose **Sign in to downloader**. This opens the native app’s normal login screen in your browser. The desktop HTTP and WebSocket routes require the dashboard session; VNC listens only on container loopback and add no published ports. Deployment does not create a native account or bypass its login.
+
+Docker access is selected automatically: the scripts use Docker directly when available, otherwise `sudo docker`. This may prompt for the host password. The root `.env` contains the dashboard credentials and deployment settings.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[Dashboard :18780] --> API[Node API / SQLite queue]
+  API --> Bridge[Loopback WebSocket bridge]
+  Bridge --> Native[Authenticated native app under Xvfb]
+  Native --> Stage[Private staging]
+  Stage --> Validate[FLAC and duration validation]
+  Validate --> Files[Atomic publish to music folder]
+  API --> Sync[Scan and ordered playlist synchronization]
+  Files --> Navidrome[Navidrome :4533]
+  Sync --> Navidrome
+  Listener[Separate Navidrome login] --> Navidrome
 ```
 
-**Required settings:**
-- `SPOTISYNC_SECRET_KEY` — JWT secret (use the generated key above)
+The supplied ZIP contains a compiled Wails/WebKit app, not backend source. `native/inject.c` adds a document-start script using WebKit's user-script API. It calls three existing native methods for Spotify metadata, track downloads, and progress. The binary remains intact and performs its normal authentication. This avoids coordinate-based GUI automation, but still depends on the supplied app's WebKit/Wails interface.
 
-**Optional but recommended:**
-- `MUSIC_LIBRARY_PATH` — Where to save your music (defaults to `./music`)
+The bridge is authenticated with a per-start token and listens only on container loopback. The dashboard exposes no arbitrary native RPC, JavaScript evaluation, or session getters. Writes require a matching Origin; login is rate-limited. Navidrome's own authentication remains enabled, with no external-auth headers trusted.
 
-### 3. Deploy
+## Queue and library behavior
 
-```bash
-docker-compose up -d
+- SQLite preserves the queue across restarts; interrupted work resumes.
+- Downloads are staged outside the music directory, checked for FLAC audio and plausible duration, then published through a temporary file and atomic rename.
+- Stable Spotify-ID filenames prevent duplicate files across imports. Readable music metadata stays embedded in the FLAC.
+- Completed playlists trigger a Navidrome scan, exact disk-path matching, playlist creation/update, and order verification. Repeated tracks remain repeated entries.
+- Provider failures remain visible per track. Partially available collections produce a playlist containing successful tracks and are marked partial.
+- Cancel stops after the current track and synchronizes the collected portion. Retry reuses valid files and updates the same saved playlist ID.
+- A native timeout/disconnect halts the worker to prevent overlapping downloads. Restart the dashboard and retry the failed job.
+
+`ND_SUBSONIC_DEFAULTREPORTREALPATH=true` enables exact matching for newly registered clients. With an older Navidrome database, enable **Report real path** for the `privamusic-next` player in its settings if needed.
+
+## Upgrading from the nested layout
+
+The application and Compose file now live at the repository root. When upgrading an existing checkout, move the ignored `next-stack/.env`, `next-stack/build/`, and any local session data to their corresponding root locations before running `./deploy.sh`. Replace an old root Spotify `.env` with the dashboard `.env`; keep a private backup if needed. Update `NEXT_SESSION_DIR` if it points inside the former directory.
+
+The Compose project name remains `privamusic-next` to preserve the service identity. Redeploy from the root to recreate containers with the new bind-mount paths. Do not use `docker compose down -v` or delete persistent data during migration.
+
+## Persistent data
+
+| Path | Contents |
+| --- | --- |
+| `build/music/` | Finished FLAC files; read-only in Navidrome |
+| `build/data/` | Queue database and download staging |
+| `build/navidrome/` | Navidrome database, playlists, cache |
+| `NEXT_SESSION_DIR` or `build/session/` | Native session, settings, FFmpeg tools |
+| `.env` | Credentials and cookie signing secret |
+
+Paths above are relative to the repository root. Back up these locations; keep credentials and session data private. None are included in Git or the image. Stopping the stack retains bind-mounted data.
+
+## Checks and operations
+
+From the repository root:
+
+```sh
+npm test
+node scripts/control.mjs status
+node scripts/control.mjs add 'https://open.spotify.com/playlist/5FwoQeE2v5BGBvNj4JvdWl'
+sudo docker compose ps
+sudo docker compose logs --tail=50 dashboard
+sudo docker compose down
 ```
 
-### 4. Access
+`node scripts/check-ports.mjs` tests the separate ports, access controls, dashboard login, and Navidrome login in a browser. Install Playwright's Chromium first, or supply `CHROMIUM_PATH`. `node scripts/smoke.mjs` additionally submits a real track and checks download completion. Screenshots are saved in ignored `build/screenshots/`.
 
-Open the url defined by `PUBLIC_URL` (defaults to `http://localhost:3000`) and create an account to start downloading!
+The preparation step requires its listed host tools and uses the host CA bundle when building the native runtime. The AppImage's service availability and authenticated session remain external dependencies; provider failures are not reported as successful downloads.
 
-## Configuration
+## Artwork and lyrics
 
-All configuration is done via a single `.env` file. Copy `.env.example` to `.env` and customize:
+Downloads request embedded covers and lyrics from the native app. Before Navidrome
+scans, the worker fills missing artwork from the track's Spotify image and missing
+lyrics from LRCLIB's exact metadata/duration lookup. Timed lyrics are preferred;
+plain lyrics are used when timing is unavailable. Lyrics are embedded and saved
+as matching `.lrc` sidecars. Existing artwork and lyrics are preserved. FLAC audio
+is copied without re-encoding. A missing match does not fail the music download.
+Navidrome prefers embedded artwork and sidecar lyrics.
 
-```bash
-cp .env.example .env
+To backfill existing completed downloads while the download queue is idle:
+
+```sh
+docker compose exec -T dashboard node src/backfill.mjs
 ```
 
-### Required Variables
+This is safe to rerun: existing metadata is retained. The command writes counts
+and per-track availability to `build/data/enrichment-report.json`, then requests
+a full Navidrome scan. Source outages appear in the report and can be retried.
 
-| Variable | Description |
-|----------|-------------|
-| `SPOTISYNC_SECRET_KEY` | Secret key for JWT token signing (generate with `openssl rand -hex 32`) |
-
-### Optional Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MUSIC_LIBRARY_PATH` | `./music` | Directory where downloaded music is saved |
-| `SPOTISYNC_PORT` | `8080` | Backend API port |
-| `FRONTEND_PORT` | `3000` | Frontend web UI port |
-| `PUBLIC_URL` | `http://backend:8080` | Public API URL (for reverse proxy setups) |
-| `SPOTISYNC_WORKERS` | `2` | Number of concurrent download workers |
-| `SPOTISYNC_LOG_LEVEL` | `info` | Log level: debug, info, warn, error |
-| `SPOTIFY_CLIENT_ID` | Built-in | Custom Spotify application Client ID |
-| `SPOTIFY_CLIENT_SECRET` | Built-in | Custom Spotify application Client Secret |
-
-> **Note:** Spotify credentials are optional. Spotisync includes built-in default credentials that work out of the box. Only set custom credentials if you want to use your own Spotify app.
-
-### Public Spotify playlists
-
-When the official Spotify API omits playlist tracks or fails, the backend falls
-back to SpotiFLAC's public web-player metadata flow. This supports public playlist
-preview and download-job creation without requiring Spotify user sign-in. Private
-playlists are not supported by this fallback. Spotify web-player changes or rate
-limits can still prevent metadata retrieval; long API retry delays fail promptly.
-
-The fallback supplies track title, artists, album, duration, and artwork, but may
-not include ISRC or full release metadata. Downloads then use the existing
-provider metadata matching. Audio availability depends on the configured providers.
-Upstream source and license attribution are recorded in `licenses/SpotiFLAC-SOURCE.md`.
-
-### Navidrome Integration (Optional)
-
-| Variable | Description |
-|----------|-------------|
-| `NAVIDROME_HOST` | Navidrome server URL (e.g., `http://navidrome:4533`) |
-| `NAVIDROME_USER` | Navidrome admin username |
-| `NAVIDROME_PASS` | Navidrome admin password |
-
-### Official API Fallback (Optional)
-
-By default, Spotisync uses third-party APIs that require no credentials. You can optionally configure official API credentials:
-
-| Variable | Description |
-|----------|-------------|
-| `TIDAL_CLIENT_ID` | Official Tidal API client ID |
-| `TIDAL_CLIENT_SECRET` | Official Tidal API client secret |
-| `QOBUZ_APP_ID` | Official Qobuz API app ID |
-| `QOBUZ_SECRET` | Official Qobuz API secret |
-
-## Development Setup
-
-### Backend (Go)
-
-```bash
-cd backend
-
-# Install dependencies
-go mod download
-
-# Run the server
-go run ./cmd/server
-```
-
-### Frontend (Next.js)
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-```
-
-The backend runs on `http://localhost:8080` and frontend on `http://localhost:3000`.
-
-## API Endpoints
-
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/auth/register` | Register a new user |
-| `POST` | `/api/v1/auth/login` | Login and receive JWT token |
-
-### Downloads
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/preview` | Preview tracks from a Spotify URL |
-| `POST` | `/api/v1/jobs` | Create a download batch job |
-| `GET` | `/api/v1/jobs` | List all jobs for the user |
-
-### Settings
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/settings/*` | Retrieve user settings |
-
-### Real-time Updates
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/ws` | WebSocket connection for live job updates |
-
-## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Spotisync Flow                          │
-└─────────────────────────────────────────────────────────────────┘
-
-    User provides a Spotify URL (track/album/playlist/artist)
-                                 │
-                                 ▼
-          Backend fetches track metadata from Spotify API
-       Extracts ISRC (International Standard Recording Code)
-                                 │
-                                 ▼
-      Backend searches Tidal/Qobuz for matching tracks by ISRC
-             Uses third-party APIs (no auth required)
-                                 │
-                                 ▼
-         FLAC audio is downloaded from the matched source
-                                 │
-                                 ▼
-             Metadata + Lyrics + Cover Art are embedded
-              Lyrics from LRCLIB (embedded + .lrc file)
-           Cover art from MusicBrainz (embedded + cover.jpg)
-                                 │
-                                 ▼
-       File is saved to configured music library path
-```
-
-## Navidrome Integration
-
-Spotisync integrates seamlessly with [Navidrome](https://www.navidrome.org/) for automatic library management:
-
-### Features
-- **Automatic Library Scanning** — After downloads complete, Spotisync triggers a Navidrome library scan
-- **Playlist Sync** — Spotify playlists are automatically created as Navidrome playlists
-- **Smart Duplicate Detection** — Tracks already in your library (by ISRC) are automatically skipped
-
-### Configuration
-
-Add these variables to your `.env` file:
-
-```bash
-# Navidrome Integration
-NAVIDROME_HOST=http://localhost:4533  # Your Navidrome URL
-NAVIDROME_USER=admin                   # Admin username for library scans
-NAVIDROME_PASS=your-password           # Admin password
-```
-
-> **Note:** Admin credentials are used for library scan operations. User-specific credentials (configured in the UI) are used for playlist creation.
-
-
-## Tech Stack
-
-### Backend
-- **Language:** Go 1.22+
-- **Framework:** Gin / Chi
-- **Database:** SQLite
-- **Audio Processing:** FFmpeg
-
-### Frontend
-- **Framework:** Next.js 14+
-- **UI Library:** React 18
-- **Styling:** TailwindCSS
-- **State Management:** Zustand
-
-### Deployment
-- **Containerization:** Docker
-- **Orchestration:** Docker Compose
-
-## Supported Spotify URLs
-
-Spotisync accepts various Spotify URL formats:
-
-```
-# Single Track
-https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
-
-# Album
-https://open.spotify.com/album/1DFixLWuPkv3KT3TnV35m3
-
-# Playlist
-https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M
-```
-
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-For other open-source licenses see `licenses/` folder
-
-
-## Useful Links and Acknowledgements
-- **[SpotiFLAC](https://github.com/afkarxyz/SpotiFLAC)** - The inspiration for this project, and source for some of the code
-- **[LRCLIB](https://lrclib.net/)** — Synced lyrics database
-- **[MusicBrainz](https://musicbrainz.org/)** — Cover art and music metadata
-For licenses see `licenses/` folder
-
-## Disclaimer
-
-This software is provided for educational and personal use only. Please respect copyright laws and the terms of service of the platforms involved. The developers are not responsible for any misuse of this software.
-
----
-
-<p align="center">
-  Made with ❤️ for music enthusiasts
-</p>
+Native download requests are spaced at least ten seconds apart. A provider HTTP
+429 pauses the whole queue with a persisted cooldown (one minute, then doubling
+up to fifteen minutes). The same track is retried up to five times before the
+job stops for manual retry. The dashboard displays the resume time; restarting
+the container or submitting another job does not bypass the cooldown.
