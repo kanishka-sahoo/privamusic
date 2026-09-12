@@ -1,21 +1,13 @@
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {resolve} from 'node:path';
 import net from 'node:net';
 import {WebSocketServer,WebSocket} from 'ws';
-const clientRoot=fileURLToPath(new URL('../node_modules/@novnc/novnc/',import.meta.url));
-const webRoot=fileURLToPath(new URL('../web/',import.meta.url));
+const nativePage=fileURLToPath(new URL('../dist/native.html',import.meta.url));
 
 export async function proxyDesktop(req,res){
-  const path=new URL(req.url,'http://localhost').pathname;
-  let file;
-  if(path==='/native/vnc.html')file=resolve(webRoot,'native.html');
-  else if(path==='/native/desktop.js')file=resolve(webRoot,'native.js');
-  else if(path.startsWith('/native/client/')){
-    try{file=resolve(clientRoot,decodeURIComponent(path.slice('/native/client/'.length)));}catch{res.writeHead(404).end();return;}
-    if(!file.startsWith(clientRoot)||!file.endsWith('.js')){res.writeHead(404).end();return;}
-  }else{res.writeHead(404).end();return;}
-  try{const data=await readFile(file);res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html':'text/javascript'});res.end(data);}catch{res.writeHead(404).end();}
+  // The noVNC client is bundled into the public /assets build; only the page itself stays behind the session.
+  if(new URL(req.url,'http://localhost').pathname!=='/native/vnc.html'){res.writeHead(404).end();return;}
+  try{const data=await readFile(nativePage);res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(data);}catch{res.writeHead(404).end();}
 }
 export function desktopUpgradeAllowed(req,authenticated){
   try{return req.url==='/native/websockify'&&new URL(req.headers.origin).host===req.headers.host&&authenticated(req);}catch{return false;}

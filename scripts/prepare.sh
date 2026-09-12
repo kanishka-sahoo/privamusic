@@ -22,6 +22,7 @@ cp "$(command -v node)" build/node
 cp /etc/ssl/certs/ca-certificates.crt build/runtime/ca-certificates.crt
 gcc -shared -fPIC -O2 -Wall -Wextra -o build/bridge-inject.so native/inject.c -ldl
 npm ci --ignore-scripts
+npm run build
 if [ ! -f .env ]; then
   umask 077
   node --input-type=module - <<'JS' > .env

@@ -41,3 +41,12 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - Container mounts were verified against root `build/data`, `build/music`, and `build/navidrome`; the existing external native-session path was retained.
 - Browser checks passed for both logins, the library link, delayed login, CSRF protection, and rejected trusted-header spoofing. The checks used the host's installed Chromium via `CHROMIUM_PATH`.
 - Existing dashboard credentials and persistent data were retained. No new download was submitted as part of this migration.
+
+## React frontend redesign — 2026-09-12
+
+- The dashboard and downloader login pages were rebuilt as a React 19 + Vite project under `web/` with a component, hook, and page structure; `npm run build` produces hashed assets in `dist/` with no inline scripts or styles, so the existing Content Security Policy is unchanged.
+- The noVNC client is now bundled into the build instead of being proxied from `node_modules`, and the Docker image copies `dist/` rather than `web/` and the noVNC package.
+- `npm test` passed all unit tests, including the updated native-route test. `scripts/check-scroll.mjs` passed against the build: polling preserves open track lists, scroll positions, and progress-bar animations.
+- The real server was started locally against `dist/`: the index, favicon, and hashed assets are public with immutable caching; `/native/vnc.html`, `/native.html`, and `/index.html` require a session.
+- Screenshots in `build/screenshots/v2-*.png` cover login, dashboard, expanded track details, dark mode, empty state, mobile, and the native login page. No console errors and no horizontal overflow at 390px.
+- Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
