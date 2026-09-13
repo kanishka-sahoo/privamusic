@@ -19,16 +19,32 @@ The command prepares the native app, generates credentials on first use, builds 
 
 Both ports bind to localhost by default. Each service has its own login. The same generated email/password works for both unless a separate Navidrome password was configured. Login details are written to `build/ACCESS.md` with private permissions. The dashboard's **Open library** link uses the current hostname and Navidrome's configured port.
 
-### Tailnet hostnames (optional)
+### Tailscale Services (optional)
 
-Each service can be exposed on your Tailscale network under its own hostname, with Tailscale-issued HTTPS certificates and no port in the address:
+The dashboard and Navidrome can be published as [Tailscale Services](https://tailscale.com/docs/features/tailscale-services), each with a stable name, a Tailscale-issued HTTPS certificate, and no port in the address:
 
 | Service | Address |
 | --- | --- |
 | Dashboard | `https://privamusic.<tailnet>.ts.net/` |
-| Navidrome | `https://navidrome-privamusic.<tailnet>.ts.net/` |
+| Navidrome | `https://navidrome.<tailnet>.ts.net/` |
 
-Uncomment the tailnet block in `.env` (see `.env.example`): set `COMPOSE_PROFILES=tailnet`, a reusable auth key in `TS_AUTHKEY`, and optionally different hostnames. Then run `./deploy.sh`. Two `tailscale/tailscale` sidecar containers join the tailnet as separate nodes and proxy to the services over the Compose network in userspace mode, so no capabilities or host networking are needed. The tailnet name is never configured: Tailscale fills it in at runtime, the deploy script prints the resulting URLs, and the dashboard's **Open library** link derives Navidrome's hostname from the address you are visiting. Node identity persists in `build/tailscale/`, so the auth key is only used on first enrollment; the same applies after renaming the tailnet. MagicDNS and HTTPS certificates must be enabled for the tailnet. Approve the new nodes in the admin console if your tailnet requires device approval.
+One `tailscale/tailscale` sidecar joins the tailnet as a tagged node (`privamusic-host` by default) and advertises both services, proxying to the containers over the Compose network in userspace mode. Nothing in the repository or `.env` names the tailnet: Tailscale assigns the names, the deploy script prints them, and the dashboard's **Open library** link derives Navidrome's name from the address you are visiting.
+
+One-time setup in the Tailscale admin console:
+
+1. In the policy file, add a tag the node will use and allow it to host the services. Adjust the tag and who may reach the services:
+
+   ```json
+   "tagOwners": {"tag:privamusic": ["autogroup:admin"]},
+   "grants": [{"src": ["autogroup:member"], "dst": ["svc:privamusic", "svc:navidrome"], "ip": ["tcp:443"]}],
+   "autoApprovers": {"services": {"svc:privamusic": ["tag:privamusic"], "svc:navidrome": ["tag:privamusic"]}}
+   ```
+
+   Without `autoApprovers`, approve the two services on the **Services** page after the first deployment.
+2. Generate a reusable auth key for `tag:privamusic` (Settings > Keys). Ephemeral off.
+3. In `.env`, set `COMPOSE_PROFILES=tailnet` and `TS_AUTHKEY`, optionally the names (see `.env.example`), then run `./deploy.sh`.
+
+Node identity and the serve configuration persist in `build/tailscale/`, so the key is only used for enrollment, and renaming the tailnet needs no change. MagicDNS and HTTPS certificates must be enabled for the tailnet. Service hosts must be tagged nodes; user-identity nodes are refused.
 
 `NAVIDROME_PUBLIC_URL` overrides the library link for any other reverse-proxy setup.
 
