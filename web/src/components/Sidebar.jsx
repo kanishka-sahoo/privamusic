@@ -1,44 +1,56 @@
+import {Brand} from './Brand.jsx';
 import {Button, ExternalIcon} from './Button.jsx';
-import {Panel} from './Panel.jsx';
+import {AlbumIcon, CloseIcon, DesktopIcon, HomeIcon, PlaylistIcon, PlusIcon, QueueIcon, TrackIcon} from './Icons.jsx';
+import {Link} from './Link.jsx';
+import {StatusPill} from './StatusPill.jsx';
+import {KINDS, libraryUrl} from '../lib/jobs.js';
 
-function Stat({value, label}) {
+function NavItem({to, icon: IconComponent, count, end, children, onNavigate}) {
   return (
-    <div className="stat">
-      <span className="stat-value">{value}</span>
-      <span className="stat-label">{label}</span>
-    </div>
+    <li>
+      <Link to={to} end={end} className="nav-item" activeClassName="active" onClick={onNavigate}>
+        <IconComponent />
+        <span className="nav-label">{children}</span>
+        {count ? <span className="nav-count">{count}</span> : null}
+      </Link>
+    </li>
   );
 }
 
-export function StatsPanel({summary}) {
+// Primary navigation. On small screens it becomes a drawer controlled by the top bar.
+export function Sidebar({summary, connection, navidromePort, onLogout, open, onClose}) {
+  const [state, label] = connection;
   return (
-    <Panel className="stats" aria-label="Library summary">
-      <Stat value={summary.tracks} label="Tracks collected" />
-      <Stat value={summary.active} label="In the queue" />
-      <Stat value={summary.playlists} label="Playlists synced" />
-    </Panel>
-  );
-}
-
-export function DownloaderPanel() {
-  return (
-    <Panel className="side-card" title="Downloader session" titleId="downloader-title">
-      <p>The native downloader keeps its own login. Open its screen to sign in for the first time or to renew an expired session.</p>
-      <Button as="a" variant="ghost" block href="/native/vnc.html" target="_blank" rel="noopener">
-        Open downloader <ExternalIcon />
-      </Button>
-    </Panel>
-  );
-}
-
-export function HowItWorksPanel() {
-  return (
-    <Panel className="side-card muted-card" title="How it works" titleId="how-title">
-      <ol className="steps">
-        <li>Tracks are fetched through the authenticated downloader.</li>
-        <li>Each file is checked for FLAC audio and a plausible duration.</li>
-        <li>Finished files are published to the music folder and Navidrome playlists are updated in order.</li>
-      </ol>
-    </Panel>
+    <>
+      <div className={`scrim${open ? ' visible' : ''}`} onClick={onClose} aria-hidden="true" />
+      <aside className={`sidebar${open ? ' open' : ''}`} aria-label="Main navigation">
+        <div className="sidebar-head">
+          <Brand />
+          <button type="button" className="icon-button drawer-close" onClick={onClose} aria-label="Close menu"><CloseIcon /></button>
+        </div>
+        <nav className="sidebar-nav">
+          <p className="nav-group">Library</p>
+          <ul>
+            <NavItem to="/" icon={HomeIcon} end onNavigate={onClose}>Overview</NavItem>
+            <NavItem to="/queue" icon={QueueIcon} count={summary.active} onNavigate={onClose}>Queue</NavItem>
+            <NavItem to={KINDS.playlist.path} icon={PlaylistIcon} count={summary.playlists} onNavigate={onClose}>{KINDS.playlist.label}</NavItem>
+            <NavItem to={KINDS.album.path} icon={AlbumIcon} count={summary.albums} onNavigate={onClose}>{KINDS.album.label}</NavItem>
+            <NavItem to={KINDS.track.path} icon={TrackIcon} count={summary.singles} onNavigate={onClose}>{KINDS.track.label}</NavItem>
+          </ul>
+          <p className="nav-group">Tools</p>
+          <ul>
+            <NavItem to="/add" icon={PlusIcon} onNavigate={onClose}>Add from Spotify</NavItem>
+            <NavItem to="/downloader" icon={DesktopIcon} onNavigate={onClose}>Downloader</NavItem>
+          </ul>
+        </nav>
+        <div className="sidebar-foot">
+          <StatusPill id="connection" state={state}>{label}</StatusPill>
+          <Button as="a" id="library-link" variant="ghost" block href={libraryUrl(navidromePort)} target="_blank" rel="noopener">
+            Open library <ExternalIcon />
+          </Button>
+          <Button variant="quiet" block onClick={onLogout}>Sign out</Button>
+        </div>
+      </aside>
+    </>
   );
 }

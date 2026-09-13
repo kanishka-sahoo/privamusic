@@ -38,7 +38,7 @@ function send(res,status,data){res.writeHead(status,{'Content-Type':'application
 async function body(req){let bytes=0;const chunks=[];for await(const c of req){bytes+=c.length;if(bytes>8192)throw Error('Request too large');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString()||'{}');}
 function sameOrigin(req){const origin=req.headers.origin;if(!origin)return false;try{return new URL(origin).host===req.headers.host;}catch{return false;}}
 const failures=new Map();
-function publicJob(job){return {...job,tracks:job.tracks.map(t=>({spotify_id:t.spotify_id,name:t.name,artists:t.artists,status:t.status,error:t.error,bytes:t.bytes})),done:job.tracks.filter(t=>t.status==='completed').length,failed:job.tracks.filter(t=>t.status==='failed').length};}
+function publicJob(job){return {...job,tracks:job.tracks.map(t=>({spotify_id:t.spotify_id,name:t.name,artists:t.artists,album_name:t.album_name,release_date:t.release_date,duration_ms:t.duration_ms,images:t.images,status:t.status,error:t.error,bytes:t.bytes})),done:job.tracks.filter(t=>t.status==='completed').length,failed:job.tracks.filter(t=>t.status==='failed').length};}
 const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Content-Security-Policy',"default-src 'self'; img-src 'self' https://i.scdn.co data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -46,6 +46,8 @@ const server=http.createServer(async(req,res)=>{
   try{
     if(req.method==='GET'&&url.pathname==='/healthz')return send(res,200,{ready:bridge.connected&&navReady});
     if(req.method==='GET'&&assets.has(url.pathname)){const asset=assets.get(url.pathname);res.setHeader('Content-Type',asset.type);if(url.pathname.startsWith('/assets/'))res.setHeader('Cache-Control','public, max-age=31536000, immutable');return res.end(asset.body);}
+    // Client-side routes (/playlists, /albums/<id>, …) load the same app shell; the browser router picks the page.
+    if(req.method==='GET'&&!extname(url.pathname)&&!url.pathname.startsWith('/api/')&&!url.pathname.startsWith('/native/')){const asset=assets.get('/');res.setHeader('Content-Type',asset.type);return res.end(asset.body);}
     if(['POST','PUT','DELETE','PATCH'].includes(req.method)&&!sameOrigin(req))return send(res,403,{error:'Origin check failed'});
     if(req.method==='POST'&&url.pathname==='/api/login'){
       const key=req.socket.remoteAddress;const entry=failures.get(key)||{count:0,until:0};

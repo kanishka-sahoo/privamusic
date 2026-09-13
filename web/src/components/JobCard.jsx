@@ -1,16 +1,11 @@
 import {Button} from './Button.jsx';
+import {Cover} from './Cover.jsx';
+import {Link} from './Link.jsx';
 import {ProgressBar} from './ProgressBar.jsx';
-import {TrackList} from './TrackList.jsx';
-import {CANCELLABLE_STATUSES, RETRYABLE_STATUSES, STATUS_LABEL, coverUrl, jobNotes, progressPercent} from '../lib/jobs.js';
+import {formatRelative, plural} from '../lib/format.js';
+import {CANCELLABLE_STATUSES, KINDS, RETRYABLE_STATUSES, STATUS_LABEL, jobNotes, jobPath, progressPercent} from '../lib/jobs.js';
 
-function Cover({job}) {
-  const url = coverUrl(job);
-  return url
-    ? <img className="cover" src={url} alt="" loading="lazy" width="64" height="64" />
-    : <div className="cover cover-blank" aria-hidden="true" />;
-}
-
-function JobAction({job, onAction, busy}) {
+export function JobActionButton({job, onAction, busy}) {
   if (RETRYABLE_STATUSES.includes(job.status)) {
     return <Button variant="small" disabled={busy} onClick={() => onAction(job.id, 'retry')}>Retry</Button>;
   }
@@ -20,19 +15,29 @@ function JobAction({job, onAction, busy}) {
   return null;
 }
 
-export function JobCard({job, progress, onAction, busy}) {
+export function StatusBadge({status}) {
+  return <span className={`badge ${status}`}>{STATUS_LABEL[status] || status}</span>;
+}
+
+// One collection in a list: artwork, title, status, progress and the primary action. The title links to its page.
+export function JobCard({job, progress, onAction, busy, position}) {
   const notes = jobNotes(job, progress);
+  const count = job.tracks.length;
   return (
     <article className="job" data-job-id={job.id} data-status={job.status}>
       <div className="job-top">
-        <Cover job={job} />
+        {position !== undefined && <span className="job-position" aria-label={`Position ${position}`}>{position}</span>}
+        <Link to={jobPath(job)} className="cover-link" aria-hidden="true" tabIndex={-1}><Cover job={job} /></Link>
         <div className="job-info">
-          <h3>{job.name}</h3>
+          <h3><Link to={jobPath(job)}>{job.name}</Link></h3>
           <p className="meta">
-            <span className="kind">{job.kind}</span> · {job.tracks.length || '…'} tracks{job.playlistId ? ' · In Navidrome' : ''}
+            <span className="kind">{KINDS[job.kind]?.singular || job.kind}</span>
+            {' · '}{count ? plural(count, 'track') : 'Reading…'}
+            {job.playlistId ? ' · In Navidrome' : ''}
+            {job.createdAt ? ` · ${formatRelative(job.createdAt)}` : ''}
           </p>
         </div>
-        <span className={`badge ${job.status}`}>{STATUS_LABEL[job.status] || job.status}</span>
+        <StatusBadge status={job.status} />
       </div>
       <ProgressBar value={progressPercent(job)} />
       <div className="job-footer">
@@ -41,10 +46,9 @@ export function JobCard({job, progress, onAction, busy}) {
           {job.failed ? <> · <b className="failed-count">{job.failed}</b> failed</> : null}
           {notes.length ? ` · ${notes.join(' · ')}` : null}
         </span>
-        <JobAction job={job} onAction={onAction} busy={busy} />
+        <JobActionButton job={job} onAction={onAction} busy={busy} />
       </div>
       {job.error && <p className="error">{job.error}</p>}
-      <TrackList jobId={job.id} tracks={job.tracks} />
     </article>
   );
 }

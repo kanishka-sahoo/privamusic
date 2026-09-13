@@ -1,19 +1,10 @@
 import {useState} from 'react';
 import {Button} from './Button.jsx';
+import {LinkIcon} from './Icons.jsx';
 import {Panel} from './Panel.jsx';
 
-function LinkIcon() {
-  return (
-    <span className="add-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-        <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
-      </svg>
-    </span>
-  );
-}
-
-export function AddForm({onSubmit, busy}) {
+// onSubmit resolves to the created job (or null on failure). The field clears on success.
+export function AddForm({onSubmit, busy, compact = false}) {
   const [url, setUrl] = useState('');
   async function submit(event) {
     event.preventDefault();
@@ -21,11 +12,11 @@ export function AddForm({onSubmit, busy}) {
     if (added) setUrl('');
   }
   return (
-    <Panel className="add-panel" title="Add to library" titleId="add-title">
+    <Panel className={`add-panel${compact ? ' compact' : ''}`} title="Add to library" titleId="add-title">
       <form className="add-form" onSubmit={submit}>
         <label className="sr-only" htmlFor="spotify-url">Spotify playlist, album, or track URL</label>
         <div className="add-input">
-          <LinkIcon />
+          <span className="add-icon"><LinkIcon /></span>
           <input
             id="spotify-url"
             name="url"
@@ -40,7 +31,7 @@ export function AddForm({onSubmit, busy}) {
         </div>
         <Button type="submit" variant="primary" disabled={busy}>Add to library</Button>
       </form>
-      <p className="hint">Playlists, albums, and single tracks. Downloads are validated as FLAC and synced to Navidrome as an ordered playlist.</p>
+      {!compact && <p className="hint">Playlists, albums, and single tracks. Downloads are validated as FLAC and synced to Navidrome as an ordered playlist.</p>}
     </Panel>
   );
 }

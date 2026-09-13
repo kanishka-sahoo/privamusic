@@ -71,7 +71,20 @@ The Compose project name remains `privamusic-next` to preserve the service ident
 
 ## Frontend development
 
-The dashboard is a React 19 app built with Vite under `web/`. Pages live in `web/src/pages`, reusable pieces in `web/src/components`, state in `web/src/hooks` (session polling, toasts, async actions), and API and presentation helpers in `web/src/lib`. The downloader login page is a second entry that bundles the noVNC client. The app uses only system fonts and hashed assets so the server's strict Content Security Policy stays intact; all frontend packages are dev dependencies and nothing from `node_modules` ships in the image except `ws`.
+The dashboard is a React 19 app built with Vite under `web/`. Pages live in `web/src/pages`, reusable pieces in `web/src/components`, state in `web/src/hooks` (session polling, toasts, job actions), and API, routing, pagination and presentation helpers in `web/src/lib`.
+
+The app is multi-page with a sidebar. Each media type has its own section, and every collection has its own page:
+
+| Route | Page |
+| --- | --- |
+| `/` | Overview: stats, active downloads, collections needing attention, recent additions, quick add |
+| `/queue` | In-progress, needs-attention and finished tabs with the halted/cooldown state |
+| `/playlists`, `/albums`, `/tracks` | Paginated lists per type with status filters and search |
+| `/playlists/:id`, `/albums/:id`, `/tracks/:id` | One collection: artwork, progress, retry/cancel, Navidrome and Spotify links, and a paginated, filterable track table |
+| `/add` | Add a Spotify link; opens the new collection's page |
+| `/downloader` | Native session login, service status, how it works |
+
+Routing is history-based in `web/src/lib/router.js`; the server answers any extensionless path with the app shell, so links can be bookmarked and refreshed. Filters, search and the page number live in the query string. The downloader login page is a second entry that bundles the noVNC client. The app uses only system fonts and hashed assets so the server's strict Content Security Policy stays intact; all frontend packages are dev dependencies and nothing from `node_modules` ships in the image except `ws`.
 
 ```sh
 npm run dev     # Vite dev server on http://localhost:5173, proxying /api and /native to a running dashboard on :18780

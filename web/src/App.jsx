@@ -1,13 +1,45 @@
-import {Button, ExternalIcon} from './components/Button.jsx';
+import {useEffect, useMemo, useState} from 'react';
+import {Brand} from './components/Brand.jsx';
 import {Footer} from './components/Footer.jsx';
+import {Sidebar} from './components/Sidebar.jsx';
 import {StatusPill} from './components/StatusPill.jsx';
 import {Toast} from './components/Toast.jsx';
 import {TopBar} from './components/TopBar.jsx';
+import {useJobActions} from './hooks/useJobActions.js';
 import {useSession} from './hooks/useSession.js';
 import {useToast} from './hooks/useToast.js';
-import {libraryUrl} from './lib/jobs.js';
+import {AppContext} from './lib/context.js';
+import {summarize} from './lib/jobs.js';
+import {matchPath, useLocation} from './lib/router.js';
+import {AddPage} from './pages/AddPage.jsx';
+import {CollectionPage} from './pages/CollectionPage.jsx';
+import {CollectionsPage} from './pages/CollectionsPage.jsx';
 import {DashboardPage} from './pages/DashboardPage.jsx';
+import {DownloaderPage} from './pages/DownloaderPage.jsx';
 import {LoginPage} from './pages/LoginPage.jsx';
+import {NotFoundPage} from './pages/NotFoundPage.jsx';
+import {QueuePage} from './pages/QueuePage.jsx';
+
+const ROUTES = [
+  ['/', () => <DashboardPage />],
+  ['/queue', () => <QueuePage />],
+  ['/playlists', () => <CollectionsPage kind="playlist" />],
+  ['/albums', () => <CollectionsPage kind="album" />],
+  ['/tracks', () => <CollectionsPage kind="track" />],
+  ['/playlists/:id', ({id}) => <CollectionPage kind="playlist" id={id} />],
+  ['/albums/:id', ({id}) => <CollectionPage kind="album" id={id} />],
+  ['/tracks/:id', ({id}) => <CollectionPage kind="track" id={id} />],
+  ['/add', () => <AddPage />],
+  ['/downloader', () => <DownloaderPage />],
+];
+
+function resolve(path) {
+  for (const [pattern, render] of ROUTES) {
+    const params = matchPath(pattern, path);
+    if (params) return {key: pattern, element: render(params)};
+  }
+  return {key: '404', element: <NotFoundPage />};
+}
 
 function connectionState(data) {
   if (data.halted) return ['error', 'Worker needs restart'];
@@ -15,11 +47,20 @@ function connectionState(data) {
   return ['pending', 'Starting services…'];
 }
 
-export function App() {
-  const session = useSession();
-  const {toast, show, dismiss} = useToast();
-  const signedIn = session.status === 'authenticated' && session.data;
-  const [state, label] = signedIn ? connectionState(session.data) : [];
+function Shell({session, show}) {
+  const {path} = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const actions = useJobActions(session.refresh, show);
+  const summary = summarize(session.data.jobs);
+  const connection = connectionState(session.data);
+  const route = resolve(path);
+  const value = useMemo(() => ({data: session.data, refresh: session.refresh, actions}), [session.data, session.refresh, actions]);
+
+  // New page: close the drawer and start at the top.
+  useEffect(() => {
+    setMenuOpen(false);
+    window.scrollTo(0, 0);
+  }, [route.key, path]);
 
   async function logout() {
     try {
@@ -30,25 +71,37 @@ export function App() {
   }
 
   return (
+    <AppContext.Provider value={value}>
+      <div className="shell">
+        <Sidebar summary={summary} connection={connection} navidromePort={session.data.navidromePort} onLogout={logout} open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <div className="shell-main">
+          <TopBar onMenu={() => setMenuOpen(true)} status={<StatusPill state={connection[0]} className="compact">{connection[1]}</StatusPill>} />
+          <main id="main" className="page">{route.element}</main>
+          <Footer />
+        </div>
+      </div>
+    </AppContext.Provider>
+  );
+}
+
+export function App() {
+  const session = useSession();
+  const {toast, show, dismiss} = useToast();
+  const signedIn = session.status === 'authenticated' && session.data;
+
+  return (
     <>
       <a className="skip-link" href="#main">Skip to content</a>
-      <TopBar status={signedIn && <StatusPill id="connection" state={state}>{label}</StatusPill>}>
-        {signedIn && (
-          <>
-            <Button as="a" variant="ghost" href={libraryUrl(session.data.navidromePort)} target="_blank" rel="noopener">
-              Open library <ExternalIcon />
-            </Button>
-            <Button variant="quiet" onClick={logout}>Sign out</Button>
-          </>
-        )}
-      </TopBar>
-      <main id="main" className="page">
-        {session.status === 'loading' && <p className="loading" role="status">Opening your library…</p>}
-        {session.status === 'anonymous' && <LoginPage onLogin={session.login} />}
-        {signedIn && <DashboardPage data={session.data} refresh={session.refresh} onError={show} />}
-        <Toast toast={toast} onDismiss={dismiss} />
-      </main>
-      <Footer />
+      {session.status === 'loading' && <p className="loading centered" role="status">Opening your library…</p>}
+      {session.status === 'anonymous' && (
+        <div className="login-shell">
+          <header className="topbar"><Brand /></header>
+          <main id="main" className="page"><LoginPage onLogin={session.login} /></main>
+          <Footer />
+        </div>
+      )}
+      {signedIn && <Shell session={session} show={show} />}
+      <Toast toast={toast} onDismiss={dismiss} />
     </>
   );
 }

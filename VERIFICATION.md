@@ -50,3 +50,11 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - The real server was started locally against `dist/`: the index, favicon, and hashed assets are public with immutable caching; `/native/vnc.html`, `/native.html`, and `/index.html` require a session.
 - Screenshots in `build/screenshots/v2-*.png` cover login, dashboard, expanded track details, dark mode, empty state, mobile, and the native login page. No console errors and no horizontal overflow at 390px.
 - Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
+
+## Multi-page dashboard — 2026-09-13
+
+- The dashboard became a routed, multi-page app: sidebar navigation, an overview, a queue with tabs, paginated and searchable playlist/album/single sections, and one page per collection with a paginated track table. `src/server.mjs` now serves the app shell for extensionless paths and exposes album, duration and release fields per track.
+- `npm run build` succeeded; `npm test` passed all unit tests. The real server was started locally against `dist/`: `/playlists`, `/albums/<id>` and `/queue?page=2` return the shell, while `/api/state`, `/native/vnc.html`, `/index.html` and unknown files still require a session.
+- `scripts/check-scroll.mjs` was rewritten for the new routes and passed: polling on a collection page retains DOM nodes and scroll position, status changes update in place, unchanged progress bars do not re-animate, pagination and filters update the URL, the queue keeps existing cards when a new collection is inserted, and the browser back button works.
+- Screenshots in `build/screenshots/v3-*.png` cover every page, dark mode, the empty state, mobile layouts and the navigation drawer. No console errors and no horizontal overflow at 390px.
+- Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
