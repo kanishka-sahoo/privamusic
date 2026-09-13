@@ -41,8 +41,11 @@ One-time setup in the Tailscale admin console:
    ```
 
    Without `autoApprovers`, approve the two services on the **Services** page after the first deployment.
-2. Generate a reusable auth key for `tag:privamusic` (Settings > Keys). Ephemeral off.
-3. In `.env`, set `COMPOSE_PROFILES=tailnet` and `TS_AUTHKEY`, optionally the names (see `.env.example`), then run `./deploy.sh`.
+2. Define the two services (Services > Define a service, or the API): names `svc:privamusic` and `svc:navidrome`, port `tcp:443`, tag `tag:privamusic`. Advertising before the definitions exist succeeds silently but the names do not resolve; restart the sidecar after defining them.
+3. Generate a reusable auth key for `tag:privamusic` (Settings > Keys). Ephemeral off.
+4. In `.env`, set `COMPOSE_PROFILES=tailnet` and `TS_AUTHKEY`, optionally the names (see `.env.example`), then run `./deploy.sh`.
+
+A node that was previously enrolled with a plain machine name of the same label shadows the service name in MagicDNS; delete such machines in the admin console.
 
 Node identity and the serve configuration persist in `build/tailscale/`, so the key is only used for enrollment, and renaming the tailnet needs no change. MagicDNS and HTTPS certificates must be enabled for the tailnet. Service hosts must be tagged nodes; user-identity nodes are refused.
 

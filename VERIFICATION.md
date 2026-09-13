@@ -75,3 +75,10 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - From another tailnet machine: the dashboard shell, `/playlists`, and `/api/state` (401 without a session) answered over HTTPS with valid certificates on the dashboard hostname; Navidrome's login redirect and `/ping` answered on its own hostname. The first request took about twenty seconds while Tailscale issued the certificate.
 - On the server, a real login through the new dashboard hostname returned a Secure, HttpOnly session cookie; `/api/state` reported the bridge and Navidrome ready and carried Navidrome's tailnet hostname for the library link; a cross-origin write was rejected with 403.
 - The host-level Tailscale Serve entries on ports 18780 and 4533 were re-created after the tailnet rename and remain active alongside the sidecars.
+
+## Tailscale Services — 2026-09-13
+
+- Replaced the two machine sidecars with one tagged node (`privamusic-host`, `tag:privamusic`) advertising `svc:privamusic` and `svc:navidrome` from userspace mode. The service definitions, the member grant on tcp:443, and auto-approvers were created through the Tailscale API; the two stale machine nodes were deleted. The names then resolved to the service VIPs instead of the old machines.
+- From another tailnet machine: `https://privamusic.<tailnet>.ts.net/`, `/playlists` and `/api/state` (401 without a session) answered with valid certificates; Navidrome's login redirect and `/ping` answered on `https://navidrome.<tailnet>.ts.net/`.
+- On the server, a login through the service name returned a Secure cookie, the state reported both services ready with Navidrome's service name for the library link, and a cross-origin write was rejected with 403.
+- Learned: advertising before the service definitions exist succeeds silently; the sidecar needed a restart after the definitions were created. Documented in the README.
