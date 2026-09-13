@@ -51,6 +51,16 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - Screenshots in `build/screenshots/v2-*.png` cover login, dashboard, expanded track details, dark mode, empty state, mobile, and the native login page. No console errors and no horizontal overflow at 390px.
 - Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
 
+## Netcup deployment — 2026-09-12
+
+- Migrated `/home/ksahoo/privamusic` on `ksahoo-srv-netcup` to the repository-root layout and successfully ran `./deploy.sh` with Node 24.20.0.
+- Previous source and configuration are backed up privately at `/home/ksahoo/privamusic-root-update-20260912`; the deployment log and pre-migration data inventory are stored there too.
+- Dashboard readiness passed, and both containers use the root `build/` bind mounts, including the existing native session.
+- All 12 tests passed inside the deployment image, including FFmpeg enrichment checks. On the host, the two FFmpeg-dependent tests skip because FFmpeg is only installed in the image.
+- Browser checks passed through the existing Tailscale HTTPS endpoints on ports 18780 and 4533, including both logins and native desktop connectivity/access controls.
+- The before/after inventory matched: four jobs, 390 FLAC files, and 8,544,007,139 bytes of music-directory files. Existing partial job statuses were unchanged.
+- All four Navidrome playlists retained the expected track order. Existing FLAC byte-range streaming and cover-art delivery passed. No new downloads were submitted.
+
 ## Multi-page dashboard — 2026-09-13
 
 - The dashboard became a routed, multi-page app: sidebar navigation, an overview, a queue with tabs, paginated and searchable playlist/album/single sections, and one page per collection with a paginated track table. `src/server.mjs` now serves the app shell for extensionless paths and exposes album, duration and release fields per track.
