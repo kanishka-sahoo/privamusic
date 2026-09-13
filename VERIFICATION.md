@@ -68,3 +68,10 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - `scripts/check-scroll.mjs` was rewritten for the new routes and passed: polling on a collection page retains DOM nodes and scroll position, status changes update in place, unchanged progress bars do not re-animate, pagination and filters update the URL, the queue keeps existing cards when a new collection is inserted, and the browser back button works.
 - Screenshots in `build/screenshots/v3-*.png` cover every page, dark mode, the empty state, mobile layouts and the navigation drawer. No console errors and no horizontal overflow at 390px.
 - Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
+
+## Tailnet hostnames — 2026-09-13
+
+- Two `tailscale/tailscale` sidecars (Compose profile `tailnet`) joined the tailnet from `ksahoo-srv-netcup` as `privamusic` and `navidrome-privamusic`, in userspace mode, proxying to the services over the Compose network. `./deploy.sh` printed the assigned HTTPS URLs and wrote them to `build/ACCESS.md`.
+- From another tailnet machine: the dashboard shell, `/playlists`, and `/api/state` (401 without a session) answered over HTTPS with valid certificates on the dashboard hostname; Navidrome's login redirect and `/ping` answered on its own hostname. The first request took about twenty seconds while Tailscale issued the certificate.
+- On the server, a real login through the new dashboard hostname returned a Secure, HttpOnly session cookie; `/api/state` reported the bridge and Navidrome ready and carried Navidrome's tailnet hostname for the library link; a cross-origin write was rejected with 403.
+- The host-level Tailscale Serve entries on ports 18780 and 4533 were re-created after the tailnet rename and remain active alongside the sidecars.
