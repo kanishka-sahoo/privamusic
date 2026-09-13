@@ -73,7 +73,7 @@ function Shell({session, show}) {
   return (
     <AppContext.Provider value={value}>
       <div className="shell">
-        <Sidebar summary={summary} connection={connection} navidromePort={session.data.navidromePort} onLogout={logout} open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <Sidebar summary={summary} connection={connection} library={session.data} onLogout={logout} open={menuOpen} onClose={() => setMenuOpen(false)} />
         <div className="shell-main">
           <TopBar onMenu={() => setMenuOpen(true)} status={<StatusPill state={connection[0]} className="compact">{connection[1]}</StatusPill>} />
           <main id="main" className="page">{route.element}</main>

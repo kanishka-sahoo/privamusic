@@ -61,7 +61,7 @@ const server=http.createServer(async(req,res)=>{
     if(!authenticated(req))return send(res,401,{error:'Sign in to continue'});
     if(req.method==='GET'&&url.pathname.startsWith('/native/'))return proxyDesktop(req,res);
     if(req.method==='POST'&&url.pathname==='/api/logout'){res.setHeader('Set-Cookie','pm_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true});}
-    if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,{user,connected:bridge.connected,navReady,navidromePort:Number(process.env.NAVIDROME_PORT||4533),halted:worker.halted,progress:worker.progress,jobs:store.list().map(publicJob)});
+    if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,{user,connected:bridge.connected,navReady,navidromePort:Number(process.env.NAVIDROME_PORT||4533),library:{url:process.env.NAVIDROME_PUBLIC_URL||null,tailnetHost:process.env.NAVIDROME_TAILNET_HOSTNAME||null},halted:worker.halted,progress:worker.progress,jobs:store.list().map(publicJob)});
     if(req.method==='POST'&&url.pathname==='/api/jobs'){
       if(worker.halted)return send(res,503,{error:'Native worker stopped after a timeout. Restart the service before retrying.'});
       const input=spotifyInput((await body(req)).url);

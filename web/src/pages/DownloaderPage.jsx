@@ -38,7 +38,7 @@ export function DownloaderPage() {
               {data.navReady ? 'Ready to scan and sync playlists.' : 'Waiting for the library to answer.'}
             </Service>
           </div>
-          <Button as="a" variant="ghost" block href={libraryUrl(data.navidromePort)} target="_blank" rel="noopener">
+          <Button as="a" variant="ghost" block href={libraryUrl(data)} target="_blank" rel="noopener">
             Open library <ExternalIcon />
           </Button>
         </Panel>

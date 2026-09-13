@@ -19,7 +19,20 @@ The command prepares the native app, generates credentials on first use, builds 
 
 Both ports bind to localhost by default. Each service has its own login. The same generated email/password works for both unless a separate Navidrome password was configured. Login details are written to `build/ACCESS.md` with private permissions. The dashboard's **Open library** link uses the current hostname and Navidrome's configured port.
 
-There is no tunnel, public URL, library reverse proxy, or trusted-header authentication. Navidrome requires its own credentials on its dedicated port. `DASHBOARD_PORT`, `NAVIDROME_PORT`, and `BIND_ADDRESS` can be configured in `.env`.
+### Tailnet hostnames (optional)
+
+Each service can be exposed on your Tailscale network under its own hostname, with Tailscale-issued HTTPS certificates and no port in the address:
+
+| Service | Address |
+| --- | --- |
+| Dashboard | `https://privamusic.<tailnet>.ts.net/` |
+| Navidrome | `https://navidrome-privamusic.<tailnet>.ts.net/` |
+
+Uncomment the tailnet block in `.env` (see `.env.example`): set `COMPOSE_PROFILES=tailnet`, a reusable auth key in `TS_AUTHKEY`, and optionally different hostnames. Then run `./deploy.sh`. Two `tailscale/tailscale` sidecar containers join the tailnet as separate nodes and proxy to the services over the Compose network in userspace mode, so no capabilities or host networking are needed. The tailnet name is never configured: Tailscale fills it in at runtime, the deploy script prints the resulting URLs, and the dashboard's **Open library** link derives Navidrome's hostname from the address you are visiting. Node identity persists in `build/tailscale/`, so the auth key is only used on first enrollment; the same applies after renaming the tailnet. MagicDNS and HTTPS certificates must be enabled for the tailnet. Approve the new nodes in the admin console if your tailnet requires device approval.
+
+`NAVIDROME_PUBLIC_URL` overrides the library link for any other reverse-proxy setup.
+
+There is no public tunnel, library reverse proxy, or trusted-header authentication. Navidrome requires its own credentials on its dedicated port. `DASHBOARD_PORT`, `NAVIDROME_PORT`, and `BIND_ADDRESS` can be configured in `.env`.
 
 ### Prerequisites
 

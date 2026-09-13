@@ -46,17 +46,30 @@ export function coverUrl(job) {
   return typeof job.cover === 'string' && /^https:\/\/i\.scdn\.co\//.test(job.cover) ? job.cover : null;
 }
 
-export function libraryUrl(navidromePort, path = '/') {
-  const url = new URL(window.location.href);
-  url.port = String(navidromePort);
+// Where Navidrome lives, from the dashboard's point of view. Precedence: an explicit public URL; the
+// sibling tailnet hostname when the dashboard itself is being viewed through the tailnet (the suffix is
+// taken from the current address, so the tailnet name is never configured); otherwise the same host on
+// Navidrome's port.
+export function libraryUrl(state, path = '/') {
+  const {navidromePort, library = {}} = state;
+  const current = new URL(window.location.href);
+  let url;
+  if (library.url) {
+    url = new URL(library.url);
+  } else if (library.tailnetHost && /\.ts\.net$/.test(current.hostname)) {
+    url = new URL(`https://${library.tailnetHost}.${current.hostname.split('.').slice(1).join('.')}/`);
+  } else {
+    url = current;
+    url.port = String(navidromePort);
+  }
   url.pathname = path;
   url.search = '';
   url.hash = '';
   return url.href;
 }
 
-export function navidromePlaylistUrl(navidromePort, playlistId) {
-  return `${libraryUrl(navidromePort, '/app/')}#/playlist/${encodeURIComponent(playlistId)}/show`;
+export function navidromePlaylistUrl(state, playlistId) {
+  return `${libraryUrl(state, '/app/')}#/playlist/${encodeURIComponent(playlistId)}/show`;
 }
 
 export function jobBytes(job) {

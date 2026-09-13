@@ -18,7 +18,7 @@ function NavItem({to, icon: IconComponent, count, end, children, onNavigate}) {
 }
 
 // Primary navigation. On small screens it becomes a drawer controlled by the top bar.
-export function Sidebar({summary, connection, navidromePort, onLogout, open, onClose}) {
+export function Sidebar({summary, connection, library, onLogout, open, onClose}) {
   const [state, label] = connection;
   return (
     <>
@@ -45,7 +45,7 @@ export function Sidebar({summary, connection, navidromePort, onLogout, open, onC
         </nav>
         <div className="sidebar-foot">
           <StatusPill id="connection" state={state}>{label}</StatusPill>
-          <Button as="a" id="library-link" variant="ghost" block href={libraryUrl(navidromePort)} target="_blank" rel="noopener">
+          <Button as="a" id="library-link" variant="ghost" block href={libraryUrl(library)} target="_blank" rel="noopener">
             Open library <ExternalIcon />
           </Button>
           <Button variant="quiet" block onClick={onLogout}>Sign out</Button>

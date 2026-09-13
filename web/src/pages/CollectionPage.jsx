@@ -91,7 +91,7 @@ export function CollectionPage({kind, id}) {
           <div className="detail-actions">
             <JobActionButton job={job} onAction={actions.jobAction} busy={actions.busyJobId === job.id} />
             {job.playlistId && (
-              <Button as="a" variant="small" href={navidromePlaylistUrl(data.navidromePort, job.playlistId)} target="_blank" rel="noopener">
+              <Button as="a" variant="small" href={navidromePlaylistUrl(data, job.playlistId)} target="_blank" rel="noopener">
                 Open in Navidrome <ExternalIcon />
               </Button>
             )}
