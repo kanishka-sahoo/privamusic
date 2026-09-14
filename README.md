@@ -17,7 +17,7 @@ The command prepares the native app, generates credentials on first use, builds 
 | Dashboard | http://localhost:18780 |
 | Navidrome | http://localhost:4533 |
 
-Both ports bind to localhost by default. Each service has its own login. The same generated email/password works for both unless a separate Navidrome password was configured. Login details are written to `build/ACCESS.md` with private permissions. The dashboard's **Open library** link uses the current hostname and Navidrome's configured port.
+Both ports bind to localhost by default. Each service has its own login. The same generated email/password works for both unless a separate Navidrome password was configured. Login details are written to `build/ACCESS.md` with private permissions. The dashboard's **Open library** link uses the current hostname and Navidrome's configured port. The generated login email defaults to `admin@example.com`; set `DASHBOARD_USER` in `.env` (or in the environment on the first run) to change it.
 
 ### Tailscale Services (optional)
 
@@ -56,8 +56,18 @@ There is no public tunnel, library reverse proxy, or trusted-header authenticati
 ### Prerequisites
 
 - Linux x86_64, Docker Compose, Node 24+, npm, GCC, and Python 3. The dashboard frontend is built with Vite during `./deploy.sh`; the output in `dist/` is what the image ships.
-- The supplied `spotiflac-next.zip` in the repository root. This application archive is not committed; obtain it separately.
+- The SpotiFLAC Next AppImage, obtained separately; see [Obtaining SpotiFLAC Next](#obtaining-spotiflac-next). It is never committed to this repository.
 - An authenticated SpotiFLAC Next application-data directory. On first deployment, the script detects `~/.local/share/spotiflac-next`. Alternatively, supply it with `NEXT_SESSION_DIR=/absolute/path ./deploy.sh`, or configure that setting in `.env`. The default fallback is `build/session`.
+
+### Obtaining SpotiFLAC Next
+
+The native downloader is [SpotiFLAC Next](https://github.com/spotbye/SpotiFLAC-Next), a separate prebuilt desktop application. This project does not include, build, or redistribute it, and it has no affiliation with its authors. Check that project's terms before use; it currently publishes no license file.
+
+1. Download the Linux x86_64 AppImage from the [releases page](https://github.com/spotbye/SpotiFLAC-Next/releases). Version 1.5.4 is the one verified with this project.
+2. Place it in the repository root as `SpotiFLAC-Next.AppImage`. A `spotiflac-next.zip` containing a single AppImage also works, or point at any path with `NEXT_APP_ARCHIVE=/path/to/SpotiFLAC-Next.AppImage ./deploy.sh`.
+3. Run `./deploy.sh`. The preparation step extracts the AppImage into the ignored `build/app/` directory and skips extraction on later runs. To upgrade, delete `build/app/` and rerun with the new file.
+
+Both file names are ignored by Git so they cannot be committed by accident. Keep the AppImage out of forks and pull requests.
 
 Stop the original app before reusing its session. Only one native instance should run for the account. For a fresh installation or an expired session, sign in to the dashboard and choose **Sign in to downloader**. This opens the native app’s normal login screen in your browser. The desktop HTTP and WebSocket routes require the dashboard session; VNC listens only on container loopback and add no published ports. Deployment does not create a native account or bypass its login.
 
@@ -79,7 +89,7 @@ flowchart LR
   Listener[Separate Navidrome login] --> Navidrome
 ```
 
-The supplied ZIP contains a compiled Wails/WebKit app, not backend source. `native/inject.c` adds a document-start script using WebKit's user-script API. It calls three existing native methods for Spotify metadata, track downloads, and progress. The binary remains intact and performs its normal authentication. This avoids coordinate-based GUI automation, but still depends on the supplied app's WebKit/Wails interface.
+The AppImage contains a compiled Wails/WebKit app, not backend source. `native/inject.c` adds a document-start script using WebKit's user-script API. It calls three existing native methods for Spotify metadata, track downloads, and progress. The binary remains intact and performs its normal authentication. This avoids coordinate-based GUI automation, but still depends on the supplied app's WebKit/Wails interface.
 
 The bridge is authenticated with a per-start token and listens only on container loopback. The dashboard exposes no arbitrary native RPC, JavaScript evaluation, or session getters. Writes require a matching Origin; login is rate-limited. Navidrome's own authentication remains enabled, with no external-auth headers trusted.
 

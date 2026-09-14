@@ -8,7 +8,7 @@ import {Store,spotifyInput} from './model.mjs';
 import {Navidrome} from './navidrome.mjs';
 import {Worker} from './worker.mjs';
 import {proxyDesktop,attachDesktop} from './native-desktop.mjs';
-const user=process.env.DASHBOARD_USER||'social@ksahoo.com';
+const user=process.env.DASHBOARD_USER||'admin@example.com';
 const password=process.env.DASHBOARD_PASSWORD;
 const secret=process.env.SESSION_SECRET;
 if(!password||password.length<16||!secret||secret.length<32)throw Error('Set a dashboard password of at least 16 characters and a session secret of at least 32 characters');

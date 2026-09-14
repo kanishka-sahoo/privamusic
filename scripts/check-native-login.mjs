@@ -23,7 +23,7 @@ try{
  await p.goto(`${base}/native/vnc.html?autoconnect=1&resize=scale&path=native/websockify`);
  await p.waitForFunction(()=>document.documentElement.classList.contains('noVNC_connected'),null,{timeout:30000});
  await p.waitForFunction(()=>{const c=document.querySelector('#native-screen canvas');if(!c?.width)return false;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const colors=new Set();for(let i=0;i<d.length;i+=4096)colors.add(`${d[i]},${d[i+1]},${d[i+2]}`);return colors.size>10;},null,{timeout:30000});
- await p.screenshot({path:new URL('../build/screenshots/netcup-native-login.png',import.meta.url).pathname,fullPage:true});
+ await p.screenshot({path:new URL('../build/screenshots/native-login.png',import.meta.url).pathname,fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('Native login screen connected over Tailscale HTTPS. Anonymous and cross-origin WebSocket access were rejected.');
 }finally{await browser.close();}

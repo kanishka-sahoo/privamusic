@@ -51,10 +51,10 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 - Screenshots in `build/screenshots/v2-*.png` cover login, dashboard, expanded track details, dark mode, empty state, mobile, and the native login page. No console errors and no horizontal overflow at 390px.
 - Not exercised here: `./deploy.sh` and the end-to-end smoke test against a live downloader session.
 
-## Netcup deployment — 2026-09-12
+## Production deployment — 2026-09-12
 
-- Migrated `/home/ksahoo/privamusic` on `ksahoo-srv-netcup` to the repository-root layout and successfully ran `./deploy.sh` with Node 24.20.0.
-- Previous source and configuration are backed up privately at `/home/ksahoo/privamusic-root-update-20260912`; the deployment log and pre-migration data inventory are stored there too.
+- Migrated the production checkout to the repository-root layout and successfully ran `./deploy.sh` with Node 24.20.0.
+- Previous source and configuration were backed up privately outside the repository, together with the deployment log and pre-migration data inventory.
 - Dashboard readiness passed, and both containers use the root `build/` bind mounts, including the existing native session.
 - All 12 tests passed inside the deployment image, including FFmpeg enrichment checks. On the host, the two FFmpeg-dependent tests skip because FFmpeg is only installed in the image.
 - Browser checks passed through the existing Tailscale HTTPS endpoints on ports 18780 and 4533, including both logins and native desktop connectivity/access controls.
@@ -71,7 +71,7 @@ Build artifacts, media, native sessions, credentials and the supplied applicatio
 
 ## Tailnet hostnames — 2026-09-13
 
-- Two `tailscale/tailscale` sidecars (Compose profile `tailnet`) joined the tailnet from `ksahoo-srv-netcup` as `privamusic` and `navidrome-privamusic`, in userspace mode, proxying to the services over the Compose network. `./deploy.sh` printed the assigned HTTPS URLs and wrote them to `build/ACCESS.md`.
+- Two `tailscale/tailscale` sidecars (Compose profile `tailnet`) joined the tailnet from the production host as `privamusic` and `navidrome-privamusic`, in userspace mode, proxying to the services over the Compose network. `./deploy.sh` printed the assigned HTTPS URLs and wrote them to `build/ACCESS.md`.
 - From another tailnet machine: the dashboard shell, `/playlists`, and `/api/state` (401 without a session) answered over HTTPS with valid certificates on the dashboard hostname; Navidrome's login redirect and `/ping` answered on its own hostname. The first request took about twenty seconds while Tailscale issued the certificate.
 - On the server, a real login through the new dashboard hostname returned a Secure, HttpOnly session cookie; `/api/state` reported the bridge and Navidrome ready and carried Navidrome's tailnet hostname for the library link; a cross-origin write was rejected with 403.
 - The host-level Tailscale Serve entries on ports 18780 and 4533 were re-created after the tailnet rename and remain active alongside the sidecars.
