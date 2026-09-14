@@ -28,6 +28,7 @@ export const KINDS = {
   playlist: {path: '/playlists', label: 'Playlists', singular: 'Playlist', noun: 'playlist', description: 'Spotify playlists, mirrored to Navidrome as ordered playlists.'},
   album: {path: '/albums', label: 'Albums', singular: 'Album', noun: 'album', description: 'Complete albums, kept together in your library.'},
   track: {path: '/tracks', label: 'Singles', singular: 'Single', noun: 'single', description: 'Individual tracks added on their own.'},
+  listenbrainz: {path: '/discover', label: 'Discoveries', singular: 'ListenBrainz', noun: 'feed', description: 'ListenBrainz Weekly Jams, Daily Jams and Weekly Exploration, imported as Navidrome playlists.'},
 };
 
 export const isActive = (job) => ACTIVE_STATUSES.includes(job.status);
@@ -105,6 +106,7 @@ export function summarize(jobs) {
     playlists: jobs.filter((j) => j.kind === 'playlist').length,
     albums: jobs.filter((j) => j.kind === 'album').length,
     singles: jobs.filter((j) => j.kind === 'track').length,
+    discoveries: jobs.filter((j) => j.kind === 'listenbrainz').length,
     synced: jobs.filter((j) => j.playlistId).length,
   };
 }

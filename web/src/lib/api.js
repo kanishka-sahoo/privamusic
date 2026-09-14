@@ -19,4 +19,5 @@ export const api = {
   logout: () => request('/api/logout', {method: 'POST', body: '{}'}),
   addJob: (url) => request('/api/jobs', {method: 'POST', body: JSON.stringify({url})}),
   jobAction: (id, action) => request(`/api/jobs/${id}/${action}`, {method: 'POST', body: '{}'}),
+  discoverCheck: () => request('/api/discover/check', {method: 'POST', body: '{}'}),
 };

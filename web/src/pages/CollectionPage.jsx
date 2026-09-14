@@ -22,6 +22,7 @@ const TRACK_FILTERS = [
   {value: 'completed', label: 'Done'},
   {value: 'queued', label: 'Waiting'},
   {value: 'failed', label: 'Failed'},
+  {value: 'skipped', label: 'Skipped'},
 ];
 
 function Fact({label, children}) {
@@ -58,7 +59,7 @@ export function CollectionPage({kind, id}) {
   const artists = jobArtists(job);
   const length = formatLength(jobDuration(job));
   const single = kind === 'track';
-  const trackOptions = TRACK_FILTERS.map((f) => ({...f, count: f.value === 'all' ? job.tracks.length : job.tracks.filter((t) => t.status === f.value).length}));
+  const trackOptions = TRACK_FILTERS.map((f) => ({...f, count: f.value === 'all' ? job.tracks.length : job.tracks.filter((t) => t.status === f.value).length})).filter((f) => f.value !== 'skipped' || f.count);
 
   function update(setter) {
     return (value) => {
@@ -96,7 +97,7 @@ export function CollectionPage({kind, id}) {
               </Button>
             )}
             <Button as="a" variant="small" className="quiet" href={job.url} target="_blank" rel="noopener">
-              View on Spotify <ExternalIcon />
+              View on {kind === 'listenbrainz' ? 'ListenBrainz' : 'Spotify'} <ExternalIcon />
             </Button>
           </div>
         </div>
@@ -105,7 +106,9 @@ export function CollectionPage({kind, id}) {
       <div className="facts">
         <Fact label="Added">{formatDate(job.createdAt)}</Fact>
         <Fact label="Last update">{formatDate(job.updatedAt)}</Fact>
-        <Fact label="Navidrome">{job.playlistId ? 'Synced as playlist' : kind === 'playlist' ? 'Not synced yet' : 'Library scan'}</Fact>
+        <Fact label="Navidrome">{job.playlistId ? 'Synced as playlist' : kind === 'playlist' || kind === 'listenbrainz' ? 'Not synced yet' : 'Library scan'}</Fact>
+        {job.edition && <Fact label="Edition">{job.edition}</Fact>}
+        {kind === 'listenbrainz' && job.tracks.some((t) => t.status === 'skipped') && <Fact label="Skipped">{job.tracks.filter((t) => t.status === 'skipped').length} without a Spotify match</Fact>}
         {single && job.tracks[0]?.album_name && <Fact label="Album">{job.tracks[0].album_name}</Fact>}
         {single && job.tracks[0]?.release_date && <Fact label="Released">{job.tracks[0].release_date}</Fact>}
       </div>

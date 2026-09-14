@@ -47,13 +47,20 @@ export class Navidrome {
       if(i===89)throw Error('Navidrome has not indexed every downloaded file yet. Retry to finish syncing.');
       await sleep(2000);
     }
-    if(job.kind!=='playlist'||!wanted.length)return null;
+    if(!['playlist','listenbrainz'].includes(job.kind)||!wanted.length)return null;
     const songId=wanted.map(t=>byPath.get(`${t.spotify_id}.flac`));
-    const data=await this.call('createPlaylist',job.playlistId?{playlistId:job.playlistId,songId}:{name:job.name,songId});
+    let data;
+    try{data=await this.call('createPlaylist',job.playlistId?{playlistId:job.playlistId,songId}:{name:job.name,songId});}
+    catch(e){
+      // The saved playlist was deleted in Navidrome: create a fresh one under the same name.
+      if(!job.playlistId||!/not found/i.test(e.message))throw e;
+      data=await this.call('createPlaylist',{name:job.name,songId});
+    }
     const id=data.playlist?.id||job.playlistId;
     if(!id)throw Error('Navidrome returned no playlist ID');
     // Persist the ID before verification so a retry updates the same playlist.
     job.playlistId=id;onPlaylist();
+    if(job.kind==='listenbrainz')await this.call('updatePlaylist',{playlistId:id,name:job.name,comment:`${job.edition||job.name} · ${job.url}`}).catch(()=>{});
     const actual=(await this.call('getPlaylist',{id})).playlist?.entry||[];
     if(actual.length!==songId.length||actual.some((s,i)=>s.id!==songId[i]))throw Error('Navidrome playlist verification failed');
     return id;

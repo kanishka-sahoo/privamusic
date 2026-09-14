@@ -15,6 +15,7 @@ import {AddPage} from './pages/AddPage.jsx';
 import {CollectionPage} from './pages/CollectionPage.jsx';
 import {CollectionsPage} from './pages/CollectionsPage.jsx';
 import {DashboardPage} from './pages/DashboardPage.jsx';
+import {DiscoverPage} from './pages/DiscoverPage.jsx';
 import {DownloaderPage} from './pages/DownloaderPage.jsx';
 import {LoginPage} from './pages/LoginPage.jsx';
 import {NotFoundPage} from './pages/NotFoundPage.jsx';
@@ -29,6 +30,8 @@ const ROUTES = [
   ['/playlists/:id', ({id}) => <CollectionPage kind="playlist" id={id} />],
   ['/albums/:id', ({id}) => <CollectionPage kind="album" id={id} />],
   ['/tracks/:id', ({id}) => <CollectionPage kind="track" id={id} />],
+  ['/discover', () => <DiscoverPage />],
+  ['/discover/:id', ({id}) => <CollectionPage kind="listenbrainz" id={id} />],
   ['/add', () => <AddPage />],
   ['/downloader', () => <DownloaderPage />],
 ];

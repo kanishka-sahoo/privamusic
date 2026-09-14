@@ -8,6 +8,7 @@ import {Store,spotifyInput} from './model.mjs';
 import {Navidrome} from './navidrome.mjs';
 import {Worker} from './worker.mjs';
 import {proxyDesktop,attachDesktop} from './native-desktop.mjs';
+import {Discover,ListenBrainz,feedList} from './listenbrainz.mjs';
 const user=process.env.DASHBOARD_USER||'admin@example.com';
 const password=process.env.DASHBOARD_PASSWORD;
 const secret=process.env.SESSION_SECRET;
@@ -17,9 +18,12 @@ const data=process.env.DATA_DIR||'/data';mkdirSync(data,{recursive:true});
 const store=new Store(`${data}/queue.db`);
 const bridge=new NativeBridge();
 const nav=new Navidrome(process.env.NAVIDROME_URL||'http://navidrome:4533',user,process.env.NAVIDROME_PASSWORD||password);
-const worker=new Worker(store,bridge,nav,process.env.MUSIC_DIR||'/music');
+// ListenBrainz discovery feeds are optional: LISTENBRAINZ_USER turns them on, LISTENBRAINZ_FEEDS narrows them.
+const listenbrainz=process.env.LISTENBRAINZ_USER?new ListenBrainz(process.env.LISTENBRAINZ_USER,process.env.LISTENBRAINZ_TOKEN):null;
+const discover=new Discover(store,listenbrainz,feedList(process.env.LISTENBRAINZ_FEEDS),Math.max(15,Number(process.env.LISTENBRAINZ_CHECK_MINUTES)||120)*60000);
+const worker=new Worker(store,bridge,nav,process.env.MUSIC_DIR||'/music',discover);
 let navReady=false;
-nav.initialize().then(()=>{navReady=true;return worker.start();}).catch(e=>{console.error(e.message);process.exit(1);});
+nav.initialize().then(()=>{navReady=true;if(discover.enabled)discover.start();return worker.start();}).catch(e=>{console.error(e.message);process.exit(1);});
 // The Vite build in dist/ is read once at startup. Hashed assets are public; the native page requires a session.
 const dist=fileURLToPath(new URL('../dist/',import.meta.url));
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png'};
@@ -38,7 +42,7 @@ function send(res,status,data){res.writeHead(status,{'Content-Type':'application
 async function body(req){let bytes=0;const chunks=[];for await(const c of req){bytes+=c.length;if(bytes>8192)throw Error('Request too large');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString()||'{}');}
 function sameOrigin(req){const origin=req.headers.origin;if(!origin)return false;try{return new URL(origin).host===req.headers.host;}catch{return false;}}
 const failures=new Map();
-function publicJob(job){return {...job,tracks:job.tracks.map(t=>({spotify_id:t.spotify_id,name:t.name,artists:t.artists,album_name:t.album_name,release_date:t.release_date,duration_ms:t.duration_ms,images:t.images,status:t.status,error:t.error,bytes:t.bytes})),done:job.tracks.filter(t=>t.status==='completed').length,failed:job.tracks.filter(t=>t.status==='failed').length};}
+function publicJob(job){return {...job,tracks:job.tracks.map(t=>({spotify_id:t.spotify_id,mbid:t.mbid,name:t.name,artists:t.artists,album_name:t.album_name,release_date:t.release_date,duration_ms:t.duration_ms,images:t.images,status:t.status,error:t.error,bytes:t.bytes})),done:job.tracks.filter(t=>t.status==='completed').length,failed:job.tracks.filter(t=>t.status==='failed').length};}
 const server=http.createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Content-Security-Policy',"default-src 'self'; img-src 'self' https://i.scdn.co data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -61,7 +65,8 @@ const server=http.createServer(async(req,res)=>{
     if(!authenticated(req))return send(res,401,{error:'Sign in to continue'});
     if(req.method==='GET'&&url.pathname.startsWith('/native/'))return proxyDesktop(req,res);
     if(req.method==='POST'&&url.pathname==='/api/logout'){res.setHeader('Set-Cookie','pm_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true});}
-    if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,{user,connected:bridge.connected,navReady,navidromePort:Number(process.env.NAVIDROME_PORT||4533),library:{url:process.env.NAVIDROME_PUBLIC_URL||null,tailnetHost:process.env.NAVIDROME_TAILNET_HOSTNAME||null},halted:worker.halted,progress:worker.progress,jobs:store.list().map(publicJob)});
+    if(req.method==='GET'&&url.pathname==='/api/state')return send(res,200,{user,connected:bridge.connected,navReady,navidromePort:Number(process.env.NAVIDROME_PORT||4533),library:{url:process.env.NAVIDROME_PUBLIC_URL||null,tailnetHost:process.env.NAVIDROME_TAILNET_HOSTNAME||null},halted:worker.halted,progress:worker.progress,discover:discover.status(),jobs:store.list().map(publicJob)});
+    if(req.method==='POST'&&url.pathname==='/api/discover/check')return send(res,200,{created:(await discover.check()).map(publicJob)});
     if(req.method==='POST'&&url.pathname==='/api/jobs'){
       if(worker.halted)return send(res,503,{error:'Native worker stopped after a timeout. Restart the service before retrying.'});
       const input=spotifyInput((await body(req)).url);

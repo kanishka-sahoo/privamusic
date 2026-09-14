@@ -15,7 +15,9 @@ export async function verifyAudio(path,expectedMs=0){
 }
 export class Worker {
   progress=null; halted=false; lastDownloadAt=0;
-  constructor(store,bridge,nav,music){Object.assign(this,{store,bridge,nav,music});store.recover();}
+  constructor(store,bridge,nav,music,discover=null){Object.assign(this,{store,bridge,nav,music,discover});store.recover();}
+  // Every completed track across all jobs, for reuse by Spotify ID or ISRC.
+  library(){return this.store.list().flatMap(j=>j.tracks).filter(t=>t.status==='completed'&&t.spotify_id);}
   save(job){if(this.store.get(job.id)?.cancelRequested)job.cancelRequested=true;return this.store.save(job);}
   async enrich(file,track){
     try{track.enrichment=await enrichAudio(file,track);}catch(e){track.enrichment={warnings:[e.message]};}
@@ -33,9 +35,17 @@ export class Worker {
   async run(job){
     try{
       job.error=null;job.retryAt=null;job.cancelRequested=false;
-      if(!job.tracks.length){job.status='resolving';this.save(job);Object.assign(job,metadata(await this.bridge.call('GetSpotifyMetadata',[{url:job.url}]),job.kind));}
+      if(!job.tracks.length){
+        job.status='resolving';this.save(job);
+        if(job.kind==='listenbrainz'){
+          if(!this.discover?.enabled)throw Error('ListenBrainz is not configured');
+          job.tracks=await this.discover.resolve(job,url=>this.bridge.call('GetSpotifyMetadata',[{url}]),this.library());
+          const images=job.tracks.find(t=>t.images)?.images;job.cover=typeof images==='string'?images:images?.[0]?.url||'';
+        }else Object.assign(job,metadata(await this.bridge.call('GetSpotifyMetadata',[{url:job.url}]),job.kind));
+      }
       job.status='downloading';this.save(job);
       for(const t of job.tracks){
+        if(t.status==='skipped')continue;
         if(this.store.get(job.id)?.cancelRequested){
           if(job.tracks.some(t=>t.status==='completed')){job.status='syncing';this.save(job);await this.nav.sync(job,()=>this.save(job));}
           job.status='cancelled';this.save(job);return;
@@ -77,9 +87,9 @@ export class Worker {
           t.status='failed';t.error=e.message;if(/timed out|disconnected/.test(e.message)){this.halted=true;throw e;}}
         this.save(job);
       }
-      const done=job.tracks.filter(t=>t.status==='completed').length;
+      const done=job.tracks.filter(t=>t.status==='completed').length,wanted=job.tracks.filter(t=>t.status!=='skipped').length;
       if(done){job.status='syncing';this.save(job);await this.nav.sync(job,()=>this.save(job));}
-      job.status=done===job.tracks.length?'completed':done?'partial':'failed';
+      job.status=done===wanted?'completed':done?'partial':'failed';
       if(!done)job.error='No tracks downloaded. Open track details for the provider errors.';
     }catch(e){job.status='failed';job.error=e.message;}
     finally{this.save(job);this.progress=null;}

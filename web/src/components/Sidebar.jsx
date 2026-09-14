@@ -1,6 +1,6 @@
 import {Brand} from './Brand.jsx';
 import {Button, ExternalIcon} from './Button.jsx';
-import {AlbumIcon, CloseIcon, DesktopIcon, HomeIcon, PlaylistIcon, PlusIcon, QueueIcon, TrackIcon} from './Icons.jsx';
+import {AlbumIcon, CloseIcon, CompassIcon, DesktopIcon, HomeIcon, PlaylistIcon, PlusIcon, QueueIcon, TrackIcon} from './Icons.jsx';
 import {Link} from './Link.jsx';
 import {StatusPill} from './StatusPill.jsx';
 import {KINDS, libraryUrl} from '../lib/jobs.js';
@@ -36,6 +36,7 @@ export function Sidebar({summary, connection, library, onLogout, open, onClose})
             <NavItem to={KINDS.playlist.path} icon={PlaylistIcon} count={summary.playlists} onNavigate={onClose}>{KINDS.playlist.label}</NavItem>
             <NavItem to={KINDS.album.path} icon={AlbumIcon} count={summary.albums} onNavigate={onClose}>{KINDS.album.label}</NavItem>
             <NavItem to={KINDS.track.path} icon={TrackIcon} count={summary.singles} onNavigate={onClose}>{KINDS.track.label}</NavItem>
+            <NavItem to={KINDS.listenbrainz.path} icon={CompassIcon} count={summary.discoveries} onNavigate={onClose}>Discover</NavItem>
           </ul>
           <p className="nav-group">Tools</p>
           <ul>

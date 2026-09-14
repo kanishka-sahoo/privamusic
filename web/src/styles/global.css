@@ -377,3 +377,13 @@ a.stat:hover{border-color:var(--ink)}
   .footer{flex-direction:column;gap:6px}
   #native-screen{height:calc(100dvh - 58px)}
 }
+
+/* Discover: one card per ListenBrainz feed. */
+.feeds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:12px}
+.feed-card{display:grid;gap:10px;justify-items:start;align-content:start}
+.feed-card .status-pill{margin-bottom:2px}
+.feed-edition{font-size:14px;line-height:1.45;margin:0!important}
+.feed-edition a{color:var(--ink);text-decoration:none;font-weight:500}
+.feed-edition a:hover{color:var(--accent)}
+.feed-meta{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0!important}
+.ok-banner{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}

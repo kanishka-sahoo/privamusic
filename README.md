@@ -1,6 +1,6 @@
 # PrivaMusic + SpotiFLAC Next + Navidrome
 
-A Docker dashboard for Spotify tracks, albums and playlists, with a durable download queue, FLAC validation, and automatic Navidrome playlist synchronization.
+A Docker dashboard for Spotify tracks, albums and playlists, with a durable download queue, FLAC validation, automatic Navidrome playlist synchronization, and optional ListenBrainz scrobbling and discovery playlists.
 
 ## One-command deployment
 
@@ -85,6 +85,8 @@ flowchart LR
   Stage --> Validate[FLAC and duration validation]
   Validate --> Files[Atomic publish to music folder]
   API --> Sync[Scan and ordered playlist synchronization]
+  LB[ListenBrainz feeds] --> API
+  Navidrome --> LB
   Files --> Navidrome[Navidrome :4533]
   Sync --> Navidrome
   Listener[Separate Navidrome login] --> Navidrome
@@ -106,6 +108,38 @@ The bridge is authenticated with a per-start token and listens only on container
 
 `ND_SUBSONIC_DEFAULTREPORTREALPATH=true` enables exact matching for newly registered clients. With an older Navidrome database, enable **Report real path** for the `privamusic-next` player in its settings if needed.
 
+## ListenBrainz scrobbling and discovery
+
+Two optional features connect the stack to [ListenBrainz](https://listenbrainz.org): Navidrome scrobbles what you play, and the dashboard imports the playlists ListenBrainz generates from those listens (**Weekly Jams**, **Daily Jams**, **Weekly Exploration**), downloads the tracks, and keeps one Navidrome playlist per feed up to date. Both are off until configured.
+
+### Scrobbling
+
+Navidrome has a built-in ListenBrainz scrobbler; the stack only needs to switch it on. Last.fm and Deezer stay disabled, so ListenBrainz remains the only external service Navidrome talks to.
+
+1. In `.env`, set `LISTENBRAINZ_SCROBBLE=true` and run `./deploy.sh`.
+2. Copy your user token from [listenbrainz.org/settings](https://listenbrainz.org/settings/).
+3. Open Navidrome, choose your user menu > **Personal**, enable **Scrobble to ListenBrainz**, and paste the token. Each Navidrome account links its own token.
+
+Plays from the Navidrome web player and from any Subsonic client that reports playback are submitted as listens. Nothing is submitted for downloads.
+
+### Discovery feeds
+
+ListenBrainz publishes Daily Jams every day and Weekly Jams and Weekly Exploration every Monday, once your account has enough listens. The dashboard polls for new editions, maps each MusicBrainz recording to a Spotify track through the ListenBrainz Labs API, downloads what is missing through the normal queue, and publishes the result to Navidrome.
+
+1. In `.env`, set `LISTENBRAINZ_USER` to your ListenBrainz user name. Add `LISTENBRAINZ_TOKEN` only if your generated playlists are private; the token is sent to `api.listenbrainz.org` and nowhere else.
+2. Optionally narrow `LISTENBRAINZ_FEEDS` (default `weekly-jams,daily-jams,weekly-exploration`) or change `LISTENBRAINZ_CHECK_MINUTES` (default 120, minimum 15).
+3. Run `./deploy.sh`. The **Discover** page shows each feed's latest edition, its import state, a link to the Navidrome playlist, and a **Check now** button; `node scripts/control.mjs discover` does the same from the shell.
+
+How an edition is imported:
+
+- Each new edition becomes a queue job of kind `listenbrainz`, listed under **Discover** with its own page, so progress, failures, retry and cancel work as for any collection.
+- Recordings are mapped to Spotify by MusicBrainz ID first and by artist/release/title second. Recordings with no Spotify match are marked **Skipped**, do not count as failures, and are left out of the playlist.
+- Tracks already in the library are reused rather than downloaded again, matched by Spotify ID and by ISRC, so Weekly Jams (music you already listen to) mostly costs nothing. New tracks are downloaded into the same music folder with the same stable file names as every other download.
+- The Navidrome playlist is named after the feed (`Weekly Jams`, `Daily Jams`, `Weekly Exploration`) and replaced in place when the next edition arrives; its comment records the edition and the ListenBrainz playlist URL. If you delete the playlist in Navidrome, the next edition creates a fresh one. Earlier editions stay in the dashboard's history and their files stay in the library.
+- Daily Jams is around fifty tracks a day. With the ten-second spacing between downloads, a fully new edition takes well over ten minutes; set `LISTENBRAINZ_FEEDS=weekly-jams,weekly-exploration` if that is more than you want.
+
+Weekly Exploration and Weekly Jams expire on ListenBrainz after two weeks; the dashboard keeps the last imported edition of each feed until a newer one is published.
+
 ## Upgrading from the nested layout
 
 The application and Compose file now live at the repository root. When upgrading an existing checkout, move the ignored `next-stack/.env`, `next-stack/build/`, and any local session data to their corresponding root locations before running `./deploy.sh`. Replace an old root Spotify `.env` with the dashboard `.env`; keep a private backup if needed. Update `NEXT_SESSION_DIR` if it points inside the former directory.
@@ -125,6 +159,8 @@ The app is multi-page with a sidebar. Each media type has its own section, and e
 | `/playlists`, `/albums`, `/tracks` | Paginated lists per type with status filters and search |
 | `/playlists/:id`, `/albums/:id`, `/tracks/:id` | One collection: artwork, progress, retry/cancel, Navidrome and Spotify links, and a paginated, filterable track table |
 | `/add` | Add a Spotify link; opens the new collection's page |
+| `/discover` | ListenBrainz feeds: latest editions, import state, Navidrome playlist links, manual check |
+| `/discover/:id` | One imported edition, with skipped recordings shown beside downloaded tracks |
 | `/downloader` | Native session login, service status, how it works |
 
 Routing is history-based in `web/src/lib/router.js`; the server answers any extensionless path with the app shell, so links can be bookmarked and refreshed. Filters, search and the page number live in the query string. The downloader login page is a second entry that bundles the noVNC client. The app uses only system fonts and hashed assets so the server's strict Content Security Policy stays intact; all frontend packages are dev dependencies and nothing from `node_modules` ships in the image except `ws`.
@@ -156,6 +192,7 @@ From the repository root:
 npm test
 node scripts/control.mjs status
 node scripts/control.mjs add 'https://open.spotify.com/playlist/5FwoQeE2v5BGBvNj4JvdWl'
+node scripts/control.mjs discover
 sudo docker compose ps
 sudo docker compose logs --tail=50 dashboard
 sudo docker compose down

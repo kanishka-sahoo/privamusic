@@ -41,7 +41,12 @@ services:
       ND_LYRICSPRIORITY: '.lrc,embedded'
       ND_LOGLEVEL: warn
       ND_ENABLESHARING: 'false'
-      ND_ENABLEEXTERNALSERVICES: 'false'
+      # LISTENBRAINZ_SCROBBLE=true in .env enables Navidrome's built-in ListenBrainz scrobbler (each listener links
+      # their own token under Personal). Last.fm and Deezer stay off, so ListenBrainz is the only external service.
+      ND_ENABLEEXTERNALSERVICES: ${LISTENBRAINZ_SCROBBLE:-false}
+      ND_LISTENBRAINZ_ENABLED: ${LISTENBRAINZ_SCROBBLE:-false}
+      ND_LASTFM_ENABLED: 'false'
+      ND_AGENTS: listenbrainz
     ports:
       - '${BIND_ADDRESS:-127.0.0.1}:${NAVIDROME_PORT:-4533}:4533'
     volumes:
