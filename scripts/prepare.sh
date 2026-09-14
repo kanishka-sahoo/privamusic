@@ -7,8 +7,8 @@ mkdir -p build/data build/music build/navidrome build/session build/runtime
 chmod 700 build/data build/session build/navidrome
 chmod 755 build/music
 if [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]; then echo 'Node 24 or newer is required' >&2; exit 1; fi
-# The native downloader is not part of this repository. Download the Linux x86_64 AppImage from
-# https://github.com/spotbye/SpotiFLAC-Next/releases and place it (or a zip containing it) in the
+# The native downloader is not part of this repository. Its author provides the Linux x86_64 AppImage
+# to supporters (https://afkarxyz.gumroad.com/coffee). Place it (or a zip containing it) in the
 # repository root, or point NEXT_APP_ARCHIVE at it. Extraction is skipped once build/app exists.
 if [ ! -x build/app/AppRun ]; then
   archive="${NEXT_APP_ARCHIVE:-}"
@@ -20,7 +20,8 @@ if [ ! -x build/app/AppRun ]; then
   if [ -z "$archive" ] || [ ! -f "$archive" ]; then
     cat >&2 <<'MSG'
 SpotiFLAC Next was not found. It is a separate, prebuilt application that this project does not ship.
-  1. Download the Linux x86_64 AppImage from https://github.com/spotbye/SpotiFLAC-Next/releases
+  1. Support the author at https://afkarxyz.gumroad.com/coffee to receive access to the downloads,
+     then download the Linux x86_64 AppImage from the supporter post.
   2. Place it in the repository root as SpotiFLAC-Next.AppImage (a spotiflac-next.zip containing the
      AppImage also works), or run: NEXT_APP_ARCHIVE=/path/to/SpotiFLAC-Next.AppImage ./deploy.sh
 See "Obtaining SpotiFLAC Next" in README.md.

@@ -61,13 +61,14 @@ There is no public tunnel, library reverse proxy, or trusted-header authenticati
 
 ### Obtaining SpotiFLAC Next
 
-The native downloader is [SpotiFLAC Next](https://github.com/spotbye/SpotiFLAC-Next), a separate prebuilt desktop application. This project does not include, build, or redistribute it, and it has no affiliation with its authors. Check that project's terms before use; it currently publishes no license file.
+The native downloader is [SpotiFLAC Next](https://github.com/spotbye/SpotiFLAC-Next), a separate prebuilt desktop application. Its author provides it to supporters of the SpotiFLAC project; it is not a public download. This project does not include, build, or redistribute it, and it has no affiliation with its author. Check that project's terms before use; it currently publishes no license file.
 
-1. Download the Linux x86_64 AppImage from the [releases page](https://github.com/spotbye/SpotiFLAC-Next/releases). Version 1.5.4 is the one verified with this project.
-2. Place it in the repository root as `SpotiFLAC-Next.AppImage`. A `spotiflac-next.zip` containing a single AppImage also works, or point at any path with `NEXT_APP_ARCHIVE=/path/to/SpotiFLAC-Next.AppImage ./deploy.sh`.
-3. Run `./deploy.sh`. The preparation step extracts the AppImage into the ignored `build/app/` directory and skips extraction on later runs. To upgrade, delete `build/app/` and rerun with the new file.
+1. Support the author at [afkarxyz.gumroad.com/coffee](https://afkarxyz.gumroad.com/coffee). Supporters receive access to the SpotiFLAC Next downloads through a private supporter post; questions about access go to the author, not to this project.
+2. Download the Linux x86_64 AppImage from that supporter access. Version 1.5.4 is the one verified with this project.
+3. Place it in the repository root as `SpotiFLAC-Next.AppImage`. A `spotiflac-next.zip` containing a single AppImage also works, or point at any path with `NEXT_APP_ARCHIVE=/path/to/SpotiFLAC-Next.AppImage ./deploy.sh`.
+4. Run `./deploy.sh`. The preparation step extracts the AppImage into the ignored `build/app/` directory and skips extraction on later runs. To upgrade, delete `build/app/` and rerun with the new file.
 
-Both file names are ignored by Git so they cannot be committed by accident. Keep the AppImage out of forks and pull requests.
+Both file names are ignored by Git so they cannot be committed by accident. Keep the AppImage out of forks, issues, and pull requests: it is the author's supporter-only release.
 
 Stop the original app before reusing its session. Only one native instance should run for the account. For a fresh installation or an expired session, sign in to the dashboard and choose **Sign in to downloader**. This opens the native app’s normal login screen in your browser. The desktop HTTP and WebSocket routes require the dashboard session; VNC listens only on container loopback and add no published ports. Deployment does not create a native account or bypass its login.
 
