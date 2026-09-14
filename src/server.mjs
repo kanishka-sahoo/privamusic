@@ -26,7 +26,7 @@ let navReady=false;
 nav.initialize().then(()=>{navReady=true;if(discover.enabled)discover.start();return worker.start();}).catch(e=>{console.error(e.message);process.exit(1);});
 // The Vite build in dist/ is read once at startup. Hashed assets are public; the native page requires a session.
 const dist=fileURLToPath(new URL('../dist/',import.meta.url));
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png'};
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff2':'font/woff2','.png':'image/png','.webmanifest':'application/manifest+json'};
 const assets=new Map();
 for(const entry of readdirSync(dist,{recursive:true,withFileTypes:true})){
   if(!entry.isFile())continue;

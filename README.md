@@ -148,7 +148,7 @@ The Compose project name remains `privamusic-next` to preserve the service ident
 
 ## Frontend development
 
-The dashboard is a React 19 app built with Vite under `web/`. Pages live in `web/src/pages`, reusable pieces in `web/src/components`, state in `web/src/hooks` (session polling, toasts, job actions), and API, routing, pagination and presentation helpers in `web/src/lib`.
+The dashboard is a React 19 app built with Vite under `web/`. It ships a web app manifest and icons, so it can be added to a phone's home screen (Share → Add to Home Screen on iOS, Install app on Android) and opens as a standalone app; there is no service worker, since the dashboard is live-polled and needs the server anyway. Pages live in `web/src/pages`, reusable pieces in `web/src/components`, state in `web/src/hooks` (session polling, toasts, job actions), and API, routing, pagination and presentation helpers in `web/src/lib`.
 
 The app is multi-page with a sidebar. Each media type has its own section, and every collection has its own page:
 

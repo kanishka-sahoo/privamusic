@@ -76,7 +76,7 @@ p{margin:0}
 .lede{color:var(--ink-2);font-size:17px;line-height:1.55;max-width:44ch;margin-top:16px}
 
 /* Top bar (brand + status; on wide screens the sidebar replaces it) */
-.topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;height:60px;padding:0 clamp(14px,3vw,28px);
+.topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;height:calc(60px + env(safe-area-inset-top));padding:env(safe-area-inset-top) clamp(14px,3vw,28px) 0;
   background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .mobile-bar{display:none}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;margin-right:auto}
@@ -98,7 +98,7 @@ p{margin:0}
 /* Shell: fixed sidebar and a scrolling content column */
 .shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;flex:1}
 .shell-main{display:flex;flex-direction:column;min-width:0}
-.sidebar{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:8px;padding:18px 14px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--surface) 70%,var(--paper));overflow-y:auto}
+.sidebar{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:8px;padding:calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));border-right:1px solid var(--line);background:color-mix(in srgb,var(--surface) 70%,var(--paper));overflow-y:auto}
 .sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 14px}
 .drawer-close{display:none}
 .sidebar-nav{flex:1;display:grid;align-content:start;gap:4px}
@@ -118,11 +118,11 @@ p{margin:0}
 .scrim{display:none}
 
 /* Page layout */
-.page{flex:1;width:100%;max-width:1120px;margin:0 auto;padding:clamp(24px,4vw,44px) clamp(16px,4vw,40px) 64px}
+.page{flex:1;width:100%;max-width:1120px;margin:0 auto;padding:clamp(24px,4vw,44px) max(clamp(16px,4vw,40px),env(safe-area-inset-right)) 64px max(clamp(16px,4vw,40px),env(safe-area-inset-left))}
 .loading{color:var(--muted);font-size:14px;padding:40px 0}
 .loading.centered{text-align:center;padding:30vh 16px}
 .login-shell{display:flex;flex-direction:column;min-height:100vh;flex:1}
-.footer{display:flex;justify-content:space-between;gap:16px;max-width:1120px;width:100%;margin:0 auto;padding:22px clamp(16px,4vw,40px);border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.footer{display:flex;justify-content:space-between;gap:16px;max-width:1120px;width:100%;margin:0 auto;padding:22px clamp(16px,4vw,40px) calc(22px + env(safe-area-inset-bottom));border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}
 .page-header-copy{min-width:0}
 .page-header h1{font-size:clamp(30px,3.6vw,42px)}
@@ -308,7 +308,7 @@ a.stat:hover{border-color:var(--ink)}
 .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .stack{display:grid;gap:14px}
 .message{font-size:13px;color:var(--bad);min-height:1.5em;margin-top:10px;overflow-wrap:anywhere}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));margin:0;padding:12px 16px;border-radius:12px;background:var(--ink);color:var(--paper);box-shadow:var(--shadow);cursor:pointer;z-index:30;animation:rise .25s ease-out}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));margin:0;padding:12px 16px;border-radius:12px;background:var(--ink);color:var(--paper);box-shadow:var(--shadow);cursor:pointer;z-index:30;animation:rise .25s ease-out}
 @keyframes rise{from{opacity:0;transform:translate(-50%,8px)}}
 
 /* Login */
@@ -333,7 +333,7 @@ a.stat:hover{border-color:var(--ink)}
 .native-toolbar{gap:12px}
 .native-toolbar .status-pill{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .native-toolbar .status-text{overflow:hidden;text-overflow:ellipsis}
-#native-screen{height:calc(100vh - 64px);height:calc(100dvh - 64px);width:100%;background:#111}
+#native-screen{height:calc(100vh - 64px);height:calc(100dvh - 64px - env(safe-area-inset-top));width:100%;background:#111}
 
 /* Responsive */
 @media(max-width:1100px){
@@ -357,25 +357,41 @@ a.stat:hover{border-color:var(--ink)}
   .login-art{display:none}
 }
 @media(max-width:640px){
-  .topbar{height:56px;gap:8px}
+  .topbar{height:calc(56px + env(safe-area-inset-top));gap:8px}
   .brand-name{font-size:16px}
+  /* iOS zooms into any field smaller than 16px on focus. */
+  .add-input input,.search-box input,.field input{font-size:16px}
+  .icon-button{width:40px;height:40px}
   .page-header{flex-direction:column;align-items:flex-start;gap:12px}
   .stat-grid{grid-template-columns:repeat(2,1fr)}
   .stat-value{font-size:24px}
   .add-form{flex-direction:column}
   .add-panel{padding:16px}
   .toolbar{align-items:stretch}
+  /* Filters scroll sideways in one row instead of wrapping into a ragged pill. */
+  .segmented{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .segmented::-webkit-scrollbar{display:none}
   .search-box{min-width:0}
   .job{padding:14px}
   .cover{width:48px;height:48px}
+  /* Title gets the full width; the badge drops under it and the queue position sits under the artwork. */
+  .job-top{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:8px;align-items:start}
+  .job-position{grid-column:1;grid-row:2;min-width:0;text-align:center;align-self:center}
+  .cover-link{grid-column:1;grid-row:1}
+  .job-info{grid-column:2;grid-row:1}
+  .job-top .badge{grid-column:2;grid-row:2;justify-self:start}
   .job-footer{flex-direction:column;align-items:flex-start}
   .detail{grid-template-columns:1fr}
   .detail .cover-lg{max-width:160px}
   .tile-grid{grid-template-columns:repeat(2,1fr)}
-  .track-album{display:none}
+  .track-album,.track-size{display:none}
+  .track-table{font-size:13px}
+  .track-table th,.track-table td{padding:8px 8px}
+  .track-index{width:32px}
+  .track-body{min-width:0}
   .pagination{flex-direction:column;align-items:flex-start}
   .footer{flex-direction:column;gap:6px}
-  #native-screen{height:calc(100dvh - 58px)}
+  #native-screen{height:calc(100dvh - 58px - env(safe-area-inset-top))}
 }
 
 /* Discover: one card per ListenBrainz feed. */
