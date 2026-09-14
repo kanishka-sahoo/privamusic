@@ -37,15 +37,18 @@ test('maps recordings to Spotify by MBID, then by metadata, and sends the token 
   const fetchImpl=async(url,init)=>{
     calls.push({url,auth:init.headers.Authorization,body:init.body&&JSON.parse(init.body)});
     const json=data=>({ok:true,status:200,headers:new Headers(),json:async()=>data});
-    if(url.includes('spotify-id-from-mbid'))return json([{recording_mbid:'m1',spotify_track_ids:[id('a')]},{recording_mbid:'m2',spotify_track_ids:[]}]);
+    if(url.includes('spotify-id-from-mbid'))return json([{recording_mbid:'m1',spotify_track_ids:[id('a')]},{recording_mbid:'m2',spotify_track_ids:[]},{recording_mbid:'m3',spotify_track_ids:[]}]);
+    if(url.includes('musicbrainz.org/ws/2/recording/m3'))return json({relations:[{url:{resource:'https://music.apple.com/x'}},{url:{resource:`https://open.spotify.com/track/${id('c')}`}}]});
+    if(url.includes('musicbrainz.org/ws/2/recording/m2'))return json({relations:[]});
     if(url.includes('spotify-id-from-metadata'))return json([{spotify_track_ids:[id('b'),'not an id']}]);
     return json({});
   };
-  const lb=new ListenBrainz('rob','secret-token',fetchImpl);
-  const ids=await lb.spotifyIds([{mbid:'m1',title:'One',artist:'A',album:''},{mbid:'m2',title:'Two',artist:'B',album:'Album'},{mbid:null,title:'',artist:'C',album:''}]);
-  assert.deepEqual(ids,[[id('a')],[id('b')],[]]);
-  assert.deepEqual(calls.map(c=>c.auth),[undefined,undefined]);
-  assert.deepEqual(calls[1].body,[{artist_name:'B',release_name:'Album',track_name:'Two'}]);
+  const lb=new ListenBrainz('rob','secret-token',fetchImpl);lb.musicbrainzDelay=0;
+  const ids=await lb.spotifyIds([{mbid:'m1',title:'One',artist:'A',album:''},{mbid:'m2',title:'Two',artist:'B',album:'Album'},{mbid:'m3',title:'Three',artist:'C',album:''},{mbid:null,title:'',artist:'D',album:''}]);
+  assert.deepEqual(ids,[[id('a')],[id('b')],[id('c')],[]]);
+  assert.deepEqual(calls.map(c=>c.auth),[undefined,undefined,undefined,undefined]);
+  assert.deepEqual(calls.map(c=>c.url.replace(/^https:\/\/[^/]+/,'')),['/spotify-id-from-mbid/json','/ws/2/recording/m2?inc=url-rels&fmt=json','/ws/2/recording/m3?inc=url-rels&fmt=json','/spotify-id-from-metadata/json']);
+  assert.deepEqual(calls[3].body,[{artist_name:'B',release_name:'Album',track_name:'Two'}]);
   await lb.createdFor();
   assert.equal(calls.at(-1).auth,'Token secret-token');assert.match(calls.at(-1).url,/\/user\/rob\/playlists\/createdfor/);
   assert.throws(()=>new ListenBrainz('not a user name'),/LISTENBRAINZ_USER/);
@@ -73,6 +76,20 @@ test('queues one job per new edition, carries the Navidrome playlist over, and r
     assert.deepEqual(tracks.map(t=>[t.spotify_id,t.status]),[[id('o'),'queued'],[id('n'),'queued'],[id('z'),'queued'],[null,'skipped']]);
     assert.equal(tracks[3].error,'No Spotify match for this recording');assert.equal(tracks[0].mbid,'m1');assert.equal(tracks[0].bytes,5);
     await assert.rejects(discover.resolve(created[0],async()=>({error:'Spotify returned 429'}),[]),/Spotify lookup failed for "A - Owned": Spotify returned 429/);
+    // A later retry finds the recording that had no match and queues it in place.
+    const job={...created[0],tracks};client.spotifyIds=async sources=>{assert.deepEqual(sources,[{mbid:'m4',title:'Nowhere',artist:'D',album:'',duration:4000}]);return [[id('f')]];};
+    assert.equal(await discover.rematch(job,async()=>({track:{spotify_id:id('f'),name:'Found'}}),known),1);
+    assert.deepEqual(job.tracks.map(t=>[t.spotify_id,t.status]),[[id('o'),'queued'],[id('n'),'queued'],[id('z'),'queued'],[id('f'),'queued']]);
+    assert.equal(job.tracks[3].mbid,'m4');assert.equal(await discover.rematch(job,()=>assert.fail('nothing skipped'),known),0);
+    // Album fallback: no track match anywhere, but a release links a Spotify album that contains the ISRC.
+    client.spotifyIds=async()=>[[]];client.albumHints=async mbid=>{assert.equal(mbid,'m9');return {albums:[id('l')],isrcs:['ISRCX']};};
+    const viaAlbum={...created[1],tracks:[{mbid:'m9',name:'Deep Cut',artists:'E',album_name:'LP',duration_ms:100000,status:'skipped'}]};
+    const albumLookup=async url=>{assert.equal(url,`https://open.spotify.com/album/${id('l')}`);return {album_info:{name:'LP'},track_list:[{spotify_id:id('q'),name:'Other',isrc:'Z'},{spotify_id:id('p'),name:'Deep Cut (Remastered)',isrc:'ISRCX',duration_ms:101000}]};};
+    assert.equal(await discover.rematch(viaAlbum,albumLookup,[]),1);
+    assert.deepEqual([viaAlbum.tracks[0].spotify_id,viaAlbum.tracks[0].status,viaAlbum.tracks[0].mbid],[id('p'),'queued','m9']);
+    client.albumHints=async()=>({albums:[id('l')],isrcs:[]});
+    const byTitle={...viaAlbum,tracks:[{mbid:'m9',name:'Deep Cut',artists:'E',album_name:'LP',duration_ms:100000,status:'skipped'}]};
+    assert.equal(await discover.rematch(byTitle,albumLookup,[]),1);assert.equal(byTitle.tracks[0].spotify_id,id('p'));
     await assert.rejects(new Discover(store,null).check(),/not configured/);
   }finally{store.db.close();rmSync(dir,{recursive:true});}
 });

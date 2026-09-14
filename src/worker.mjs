@@ -43,6 +43,7 @@ export class Worker {
           const images=job.tracks.find(t=>t.images)?.images;job.cover=typeof images==='string'?images:images?.[0]?.url||'';
         }else Object.assign(job,metadata(await this.bridge.call('GetSpotifyMetadata',[{url:job.url}]),job.kind));
       }
+      else if(job.kind==='listenbrainz'&&job.tracks.some(t=>t.status==='skipped')&&this.discover?.enabled){job.status='resolving';this.save(job);await this.discover.rematch(job,url=>this.bridge.call('GetSpotifyMetadata',[{url}]),this.library());}
       job.status='downloading';this.save(job);
       for(const t of job.tracks){
         if(t.status==='skipped')continue;

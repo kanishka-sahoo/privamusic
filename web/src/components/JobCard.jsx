@@ -3,11 +3,11 @@ import {Cover} from './Cover.jsx';
 import {Link} from './Link.jsx';
 import {ProgressBar} from './ProgressBar.jsx';
 import {formatRelative, plural} from '../lib/format.js';
-import {CANCELLABLE_STATUSES, KINDS, RETRYABLE_STATUSES, STATUS_LABEL, jobNotes, jobPath, progressPercent} from '../lib/jobs.js';
+import {CANCELLABLE_STATUSES, KINDS, STATUS_LABEL, canRetry, jobNotes, jobPath, progressPercent} from '../lib/jobs.js';
 
 export function JobActionButton({job, onAction, busy}) {
-  if (RETRYABLE_STATUSES.includes(job.status)) {
-    return <Button variant="small" disabled={busy} onClick={() => onAction(job.id, 'retry')}>Retry</Button>;
+  if (canRetry(job)) {
+    return <Button variant="small" disabled={busy} onClick={() => onAction(job.id, 'retry')}>{job.status === 'completed' ? 'Recheck skipped' : 'Retry'}</Button>;
   }
   if (CANCELLABLE_STATUSES.includes(job.status)) {
     return <Button variant="small" className="quiet" disabled={busy} onClick={() => onAction(job.id, 'cancel')}>Cancel</Button>;

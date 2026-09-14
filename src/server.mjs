@@ -80,7 +80,8 @@ const server=http.createServer(async(req,res)=>{
       const job=store.get(match[1]);if(!job)return send(res,404,{error:'Job not found'});
       if(match[2]==='retry'){
         if(worker.halted)return send(res,503,{error:'Restart the service before retrying'});
-        if(!['failed','partial','cancelled'].includes(job.status))return send(res,409,{error:'This job cannot be retried now'});
+        const rematch=job.kind==='listenbrainz'&&job.status==='completed'&&job.tracks.some(t=>t.status==='skipped');
+        if(!['failed','partial','cancelled'].includes(job.status)&&!rematch)return send(res,409,{error:'This job cannot be retried now'});
         job.status='queued';job.cancelRequested=false;job.error=null;
         for(const t of job.tracks)t.rateLimitAttempts=0;
       }else{if(!['queued','resolving','downloading'].includes(job.status))return send(res,409,{error:'This job cannot be cancelled now'});job.cancelRequested=true;if(job.status==='queued')job.status='cancelled';}

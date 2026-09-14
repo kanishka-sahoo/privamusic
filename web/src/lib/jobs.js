@@ -32,6 +32,8 @@ export const KINDS = {
 };
 
 export const isActive = (job) => ACTIVE_STATUSES.includes(job.status);
+// Feed imports can be retried even when complete, to look again for recordings that had no Spotify match.
+export const canRetry = (job) => RETRYABLE_STATUSES.includes(job.status) || (job.kind === 'listenbrainz' && job.status === 'completed' && job.tracks.some((t) => t.status === 'skipped'));
 export const needsAttention = (job) => ATTENTION_STATUSES.includes(job.status);
 
 export function jobPath(job) {
